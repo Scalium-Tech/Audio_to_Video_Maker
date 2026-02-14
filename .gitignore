@@ -1,0 +1,36 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# AI Models (too large for git)
+models/
+
+# Separated audio intermediates
+separated/
+
+# Output files
+output_song/
+
+# Node.js
+video/node_modules/
+video/out/
+video/public/audio.mp3
+video/public/lyrics.json
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

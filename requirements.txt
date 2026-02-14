@@ -1,0 +1,10 @@
+audio-separator[cpu]
+whisperx
+google-generativeai
+ollama
+requests
+torch
+torchaudio
+torchvision
+# Note: WhisperX often requires specific versions of transformers/ffmpeg-python
+# If you have an NVIDIA GPU, you may need a specific torch+cuXXX version.
