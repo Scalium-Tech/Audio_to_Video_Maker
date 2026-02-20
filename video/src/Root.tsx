@@ -8,7 +8,7 @@ const FPS = 30;
 
 // Calculate total duration from lyrics
 const lastLyric = lyricsData[lyricsData.length - 1];
-const totalDurationSec = Math.ceil(lastLyric.end) + 3; // Add 3 sec buffer at end
+const totalDurationSec = lastLyric ? Math.ceil(lastLyric.end) + 3 : 10; // Fallback to 10s if empty
 const totalFrames = totalDurationSec * FPS;
 
 export const RemotionRoot: React.FC = () => {

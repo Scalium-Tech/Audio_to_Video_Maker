@@ -9,6 +9,9 @@ def run_ffmpeg(command):
     try:
         subprocess.run(command, check=True, capture_output=True)
         return True
+    except FileNotFoundError:
+        print("Error: FFmpeg not found. Please ensure FFmpeg is installed and added to your system PATH.")
+        return False
     except subprocess.CalledProcessError as e:
         print(f"FFmpeg error: {e.stderr.decode()}")
         return False
@@ -54,12 +57,15 @@ def isolate_vocals(input_audio_path, output_dir="separated"):
         
         vocal_raw = None
         for file in output_files:
-            if "Vocals" in file:
+            # Look for "Vocals" case-insensitively and prefer the one that doesn't have "norm" in it if multiple exist
+            if "vocals" in file.lower():
                 vocal_raw = Path(output_dir) / file
-                break
+                if "(Vocals)" in file: # Higher confidence match
+                    break
         
         if not vocal_raw or not vocal_raw.exists():
-            raise FileNotFoundError("Vocal separation failed.")
+            print(f"DEBUG: Output files found: {output_files}")
+            raise FileNotFoundError("Vocal separation failed: No vocal output file detected.")
 
         # 3. Post-Processing: 100Hz High-Pass Filter
         # Removes sub-bass rumble that can confuse transcription models

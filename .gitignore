@@ -34,3 +34,17 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+
+# Session/Temporary Files
+timing_shell_sobat.json
+hybrid_inject_prompt.txt
+files.txt
+whisperx_alignment_dir.txt
+whisperx_dir.txt
+generate_timing_shell.py
+prepare_injection.py
+run_hybrid_sobat.py
+hybrid_injector.py
+
+# Input Media (Usually local only)
+input_songs/

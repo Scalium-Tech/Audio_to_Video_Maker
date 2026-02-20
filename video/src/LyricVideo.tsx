@@ -106,8 +106,11 @@ const LyricDisplay: React.FC<{
     endFrame: number;
     currentFrame: number;
 }> = ({ text, startFrame, endFrame, currentFrame }) => {
-    const fadeInDuration = 8; // frames
-    const fadeOutDuration = 8;
+    const totalFrames = endFrame - startFrame;
+    // Ensure fade durations don't overlap for very short segments
+    const safeFade = Math.min(8, Math.floor(totalFrames / 3));
+    const fadeInDuration = safeFade;
+    const fadeOutDuration = safeFade;
 
     const opacity = interpolate(
         currentFrame,

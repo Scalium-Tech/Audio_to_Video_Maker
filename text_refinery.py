@@ -1,95 +1,155 @@
 import os
 import json
-import google.generativeai as genai
 
-def refine_lyrics_with_gemini(raw_segments, api_key=None):
+# Language configuration for multi-language support
+LANGUAGE_CONFIG = {
+    "hi": {"name": "Hindi", "script_note": "Hindi → Latin (Roman) phonetics"},
+    "mr": {"name": "Marathi", "script_note": "Marathi → Latin (Roman) phonetics"},
+    "pa": {"name": "Punjabi", "script_note": "Punjabi → Latin (Roman) phonetics"},
+    "gu": {"name": "Gujarati", "script_note": "Gujarati → Latin (Roman) phonetics"},
+    "en": {"name": "English", "script_note": "Ensure natural formatting and spelling"},
+}
+
+def refine_lyrics_with_gemini(raw_segments, language="hi", api_key=None):
     """
-    Uses Google Gemini 2.5 Pro to correct Hindi lyrics, transliterate to Latin script,
+    Uses Google Gemini 2.5 Pro to correct lyrics, transliterate to Latin script,
     and group into poetic lines using WORD-LEVEL timestamps for precision.
+    Supports multiple languages via language code (hi, mr, etc.).
     """
-    print(f"--- Refining lyrics using Gemini 2.5 Pro ---")
+    lang_cfg = LANGUAGE_CONFIG.get(language, {"name": language.upper(), "script_note": f"{language} → Latin (Roman) phonetics"})
+    language_name = lang_cfg["name"]
+    script_note = lang_cfg["script_note"]
+
+    print(f"--- Refining {language_name} lyrics using Gemini 1.5 Pro-002 ---", flush=True)
     
     # Configure API key
     key = api_key or os.environ.get("GEMINI_API_KEY")
     if not key:
-        print("Error: No Gemini API key found. Set GEMINI_API_KEY environment variable or pass api_key parameter.")
+        print("Error: No Gemini API key found. Set GEMINI_API_KEY environment variable or pass api_key parameter.", flush=True)
         return None
     
-    genai.configure(api_key=key)
-    model = genai.GenerativeModel("gemini-2.5-pro")
+    # Define fallback models in order of preference
+    # Using REST API to avoid gRPC/SDK crashes in this environment
+    import requests
+    
+    models_to_try = [
+        "gemini-2.5-flash",
+        "gemini-2.0-flash-exp", # If available
+        "gemini-1.5-pro-002",
+        "gemini-1.5-flash",
+        "gemini-pro"
+    ]
 
-    # Prepare WORD-LEVEL data for LLM (not segment-level)
-    # This gives Gemini precise timestamps for every single word
-    word_data = []
+    segment_data = []
     for seg in raw_segments:
+        # Detect the ACTUAL start and end of singing within this segment
+        # ignore leading/trailing instrumental silence
         words = seg.get("words", [])
-        if words:
-            for w in words:
-                # WhisperX word objects have 'word', 'start', 'end'
-                if "start" in w and "end" in w:
-                    word_data.append({
-                        "w": w.get("word", "").strip(),
-                        "s": round(w["start"], 2),
-                        "e": round(w["end"], 2)
-                    })
+        active_starts = [w["start"] for w in words if "start" in w]
+        active_ends = [w["end"] for w in words if "end" in w]
+        
+        if active_starts and active_ends:
+            # Revert to tighter timings (removed lead-in and hang-time to fix "fast" feeling)
+            actual_start = min(active_starts)
+            actual_end = max(active_ends)
         else:
-            # Fallback if no word-level data available
-            word_data.append({
-                "w": seg["text"].strip(),
-                "s": seg["start"],
-                "e": seg["end"]
-            })
+            actual_start = seg["start"]
+            actual_end = seg["end"]
+
+        segment_data.append({
+            "text": seg["text"].strip(),
+            "start": round(actual_start, 2),
+            "end": round(actual_end, 2)
+        })
 
     prompt = f"""
-You are an expert Hindi lyricist. I will provide you with WORD-LEVEL timestamps from a speech-to-text transcription of a Hindi song.
-
-Each word has a precise "s" (start) and "e" (end) timestamp in seconds.
+You are an expert {language_name} lyricist. I will provide you with the EXACT timestamps when the singer is singing during each segment of a {language_name} song.
 
 YOUR TASK:
-1. Group these words into natural, poetic lyric lines (as they'd appear in a karaoke video).
-2. For each line, set "start" = the "s" value of the FIRST word in that line, and "end" = the "e" value of the LAST word in that line.
-3. DO NOT invent or modify any timestamps. Use ONLY the exact timestamps from the input data.
-4. Correct Hindi spelling mistakes and ensure standard Latin transliteration.
-5. Output MUST be in Latin Script (phonetic transliteration), NOT Devanagari.
+1. Format each segment into a SINGLE poetic lyric block. One block should contain 2-4 lines separated by `\n`.
+2. Do NOT split the input segment into multiple JSON objects. Each input segment must result in exactly ONE output JSON object.
+3. The 'start' and 'end' of the output object MUST remain identical to the input segment's 'start' and 'end'.
+4. Correct {language_name} spelling mistakes and ensure standard Latin transliteration ({script_note}).
+5. Output MUST be in **PLAIN Latin Script** (transliteration).
+6. **NO DIACRITICAL MARKS**: Use ONLY plain English letters (a-z).
+7. **IMPORTANT**: Return each segment as a single block that stays on screen for the whole duration provided. Use line breaks (`\n`) to format it naturally like a paragraph in a lyric video.
+8. **DO NOT REMOVE REPETITIONS**: Even if a word or phrase is repeated (e.g., "vato mithi mithi vato"), you MUST keep every occurrence. Every word the singer says is required for alignment.
 
 CRITICAL RULES:
-- Use EXACT timestamps from the word data — never interpolate or guess.
-- Each line should contain 6-10 words maximum (one natural lyric line).
-- Return ONLY a JSON array, no other text.
+- Exactly ONE JSON object per input segment.
+- Use `\n` for internal line breaks.
+- Use `"text"` as the key for the lyric content (e.g., {{"start": 0.0, "end": 2.0, "text": "..."}}).
+- Return ONLY a JSON array.
 
-Word-Level Input Data:
-{json.dumps(word_data, ensure_ascii=False)}
-
-Example Output (STRICTLY FOLLOW THIS FORMAT):
-[
-  {{"text": "subah ki dhoop si naya hai yeh savera", "start": 28.84, "end": 33.39}},
-  {{"text": "peeche chhoot gaya woh raat ka andhera", "start": 33.40, "end": 37.95}}
-]
+Segment-Level Input Data:
+{json.dumps(segment_data, ensure_ascii=False)}
 """
 
-    try:
-        response = model.generate_content(prompt)
-        text_response = response.text.strip()
+    refined_lyrics = None
+    
+    for model_name in models_to_try:
+        print(f"Attempting refinement with model: {model_name}...", flush=True)
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+        headers = {"Content-Type": "application/json"}
+        data = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"response_mime_type": "application/json"}
+        }
         
-        # Clean markdown formatting if model includes it
-        if text_response.startswith("```json"):
-            text_response = text_response[7:-3].strip()
-        elif text_response.startswith("```"):
-            text_response = text_response[3:-3].strip()
-
-        # Find the first '[' and last ']' to handle cases where LLM adds conversational text
-        start_idx = text_response.find('[')
-        end_idx = text_response.rfind(']') + 1
-        if start_idx != -1 and end_idx != 0:
-            json_str = text_response[start_idx:end_idx]
-            refined_lyrics = json.loads(json_str)
-            return refined_lyrics
-        else:
-            raise ValueError("No valid JSON array found in response.")
+        try:
+            response = requests.post(url, headers=headers, json=data)
             
-    except Exception as e:
-        print(f"Error during Gemini refinement: {e}")
-        return None
+            if response.status_code != 200:
+                print(f"Model {model_name} failed with status {response.status_code}: {response.text[:100]}...", flush=True)
+                continue # Try next model
+                
+            # Parse response
+            result_json = response.json()
+            candidates = result_json.get('candidates', [])
+            if not candidates:
+                 try:
+                    # Check for prompt feedback block
+                    feedback = result_json.get('promptFeedback', {})
+                    if feedback:
+                        print(f"Safety Block on {model_name}: {feedback}", flush=True)
+                    else:
+                        print(f"No candidates returned from {model_name}.", flush=True)
+                 except: 
+                     pass
+                 continue
+
+            text_response = candidates[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+            
+            if not text_response:
+                continue
+
+            text_response = text_response.strip()
+            # Clean markdown
+            if text_response.startswith("```json"):
+                text_response = text_response[7:-3].strip()
+            elif text_response.startswith("```"):
+                text_response = text_response[3:-3].strip()
+
+            # Parse JSON
+            try:
+                # Find brackets
+                start_idx = text_response.find('[')
+                end_idx = text_response.rfind(']') + 1
+                if start_idx != -1 and end_idx != 0:
+                    json_str = text_response[start_idx:end_idx]
+                    refined_lyrics = json.loads(json_str)
+                    print(f"SUCCESS: Refined lyrics generated using {model_name}", flush=True)
+                    return refined_lyrics
+                else:
+                    print(f"Failed to parse JSON from {model_name}", flush=True)
+            except json.JSONDecodeError:
+                 print(f"JSON Decode Error from {model_name}", flush=True)
+                 
+        except Exception as e:
+            print(f"Error calling {model_name}: {e}", flush=True)
+            
+    print("ALL MODELS FAILED. Returning None (fallback to raw).", flush=True)
+    return None
 
 if __name__ == "__main__":
     pass

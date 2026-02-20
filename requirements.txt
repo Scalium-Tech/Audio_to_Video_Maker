@@ -1,6 +1,9 @@
 audio-separator[cpu]
 whisperx
 google-generativeai
+python-dotenv
+ffmpeg-python
+soundfile
 ollama
 requests
 torch
