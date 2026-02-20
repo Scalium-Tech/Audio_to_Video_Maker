@@ -151,5 +151,73 @@ Segment-Level Input Data:
     print("ALL MODELS FAILED. Returning None (fallback to raw).", flush=True)
     return None
 
-if __name__ == "__main__":
-    pass
+
+def inject_lyrics_with_gemini(timing_shell, ground_truth, language="hi", api_key=None):
+    """
+    Step 7 of the Injection Protocol: Maps ground truth lyrics to the AI timing shell.
+    """
+    lang_cfg = LANGUAGE_CONFIG.get(language, {"name": language.upper(), "script_note": f"{language} → Latin (Roman) phonetics"})
+    language_name = lang_cfg["name"]
+
+    print(f"--- Injecting Ground Truth ({language_name}) into Timing Shell ---", flush=True)
+    
+    key = api_key or os.environ.get("GEMINI_API_KEY")
+    if not key:
+        return None
+
+    import requests
+
+    prompt = f"""
+You are a professional lyric video editor. 
+I have a 'Timing Shell' (AI-heard segments with timestamps) and 'Ground Truth Lyrics' (the correct text).
+
+GROUND TRUTH (The correct lyrics to use):
+{ground_truth}
+
+TIMING SHELL (AI interpreted segments with word-level evidence):
+{json.dumps(timing_shell, indent=2, ensure_ascii=False)}
+
+TASK:
+Map the GROUND TRUTH text to the TIMING SHELL timestamps. 
+1. Preserve the 'start' and 'end' of each segment. 
+2. If the AI "heard" a segment that is just intro music or noises (like "पूरा" or dots), map it to an empty string "" if it doesn't match the start of your lyrics.
+3. Distribute the Ground Truth lines across the AI segments where they fit best based on the timestamps.
+4. If a segment is very long, feel free to use `\n` to split the ground truth text into multiple lines within that segment.
+5. Ensure the output is a valid JSON array of objects with "start", "end", and "text".
+6. The text MUST be the exact ground truth {language_name} text in Latin script.
+7. Total accuracy is required. RETURN ONLY THE JSON ARRAY.
+"""
+
+    models_to_try = ["gemini-2.5-flash", "gemini-1.5-pro-002", "gemini-1.5-flash"]
+    
+    for model_name in models_to_try:
+        print(f"Attempting injection with model: {model_name}...", flush=True)
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+        headers = {"Content-Type": "application/json"}
+        data = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"response_mime_type": "application/json"}
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=data)
+            if response.status_code == 200:
+                result_json = response.json()
+                text_response = result_json['candidates'][0]['content']['parts'][0]['text'].strip()
+                
+                # Clean markdown
+                if text_response.startswith("```json"):
+                    text_response = text_response[7:-3].strip()
+                elif text_response.startswith("```"):
+                    text_response = text_response[3:-3].strip()
+
+                start_idx = text_response.find('[')
+                end_idx = text_response.rfind(']') + 1
+                if start_idx != -1 and end_idx != 0:
+                    return json.loads(text_response[start_idx:end_idx])
+            else:
+                print(f"Model {model_name} failed: {response.status_code}")
+        except Exception as e:
+            print(f"Error with {model_name}: {e}")
+
+    return None

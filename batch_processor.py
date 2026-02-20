@@ -6,12 +6,12 @@ import main as pipeline
 
 # Configuration
 INPUT_FOLDER = Path("input_songs")
-OUTPUT_BASE = Path("output_song")
+GROUND_TRUTH_FOLDER = Path("ground_truth_lyrics")
 
 def process_batch(model_name="large-v2"):
     """
     Scans the input_songs folder for MP3 files and processes them one by one.
-    Uses automatic language detection for each song.
+    Automatically uses ground_truth_lyrics if available for Post-Alignment Injection.
     """
     print(f"\n{'='*60}")
     print(f"       BATCH PROCESSOR: STARTING BATCH RUN (Model: {model_name})")
@@ -21,6 +21,10 @@ def process_batch(model_name="large-v2"):
         os.makedirs(INPUT_FOLDER)
         print(f"Created {INPUT_FOLDER} folder. Please add MP3 files there.")
         return
+
+    if not GROUND_TRUTH_FOLDER.exists():
+        os.makedirs(GROUND_TRUTH_FOLDER)
+        print(f"Created {GROUND_TRUTH_FOLDER} folder for ground truth lyrics.")
 
     # Find all MP3 files
     song_files = list(INPUT_FOLDER.glob("*.mp3"))
@@ -36,35 +40,36 @@ def process_batch(model_name="large-v2"):
         start_time = time.time()
         
         try:
-            # We use language="auto" to trigger our new smart detection
-            
-            # REVERTED: User requested to stop using .txt files (Lyric Anchoring)
-            # Check for LYRIC ANCHORING file
-            # e.g. "Sobat.mp3" -> "Sobat.txt" or "Sobat_lyrics.txt"
-            lyrics_text = None
             processing_language = "auto"
+            lyrics_text = None
+            ground_truth_text = None
             
-            # Check for exact match .txt
-            # txt_path = song_path.with_suffix(".txt")
-            # if txt_path.exists():
-            #     print(f"--- FOUND LYRICS FILE: {txt_path.name} ---")
-            #     try:
-            #         with open(txt_path, "r", encoding="utf-8") as f:
-            #             lyrics_text = f.read()
-            #         # If we have lyrics, we assume it's English for now (or we could detect)
-            #         processing_language = "en" 
-            #     except Exception as e:
-            #         print(f"Warning: Could not read lyrics file: {e}")
+            # Check for GROUND TRUTH LYRICS file
+            txt_path = GROUND_TRUTH_FOLDER / (song_path.stem + ".txt")
+            if txt_path.exists():
+                print(f"--- FOUND GROUND TRUTH LYRICS: {txt_path.name} ---")
+                try:
+                    with open(txt_path, "r", encoding="utf-8") as f:
+                        ground_truth_text = f.read()
+                    print(f"--- Triggering Post-Alignment Injection Protocol ---")
+                except Exception as e:
+                    print(f"Warning: Could not read ground truth file: {e}")
 
-            # Pass lyrics_text to main pipeline (now guaranteed None)
-            pipeline.main(str(song_path), language=processing_language, model_name=model_name, lyrics_text=lyrics_text)
+            # Execute pipeline
+            pipeline.main(
+                str(song_path), 
+                language=processing_language, 
+                model_name=model_name, 
+                lyrics_text=lyrics_text,
+                ground_truth_text=ground_truth_text
+            )
             
             duration = time.time() - start_time
             print(f"\n>>> SUCCESS: Finished {song_path.name} in {duration:.2f}s")
         except Exception as e:
             print(f"\n>>> ERROR: Failed to process {song_path.name}")
             print(f"Details: {e}")
-            continue # Move to next song
+            continue
 
     print(f"\n{'='*60}")
     print(f"       BATCH PROCESSOR: ALL JOBS COMPLETE")

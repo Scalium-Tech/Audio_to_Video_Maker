@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()  # Automatically reads .env file
 from audio_utils import isolate_vocals
 from transcribe_engine import transcribe_and_align
-from text_refinery import refine_lyrics_with_gemini
+from text_refinery import refine_lyrics_with_gemini, inject_lyrics_with_gemini
 
 from pathlib import Path
 
@@ -56,7 +56,7 @@ def render_video(audio_path, lyrics_path, output_video_path):
         return False
 
 
-def main(audio_path, language="hi", api_key=None, model_name="large-v2", lyrics_text=None, vocal_override_path=None):
+def main(audio_path, language="hi", api_key=None, model_name="large-v2", lyrics_text=None, vocal_override_path=None, ground_truth_text=None):
     # Extract song name for folder creation
     audio_file = Path(audio_path)
     if not audio_file.exists():
@@ -116,12 +116,15 @@ def main(audio_path, language="hi", api_key=None, model_name="large-v2", lyrics_
             json.dump(raw_segments, f, ensure_ascii=False, indent=2)
         print(f"Timing Shell saved to {timing_shell_file}")
 
-        # 3. Refine with Gemini
-        print(f"\n--- Step 3: Gemini Refinement ---")
+        # 3. Refine or Inject with Gemini
+        print(f"\n--- Step 3: Gemini Processing ---")
         try:
-            refined_lyrics = refine_lyrics_with_gemini(raw_segments, language=language, api_key=api_key)
+            if ground_truth_text:
+                refined_lyrics = inject_lyrics_with_gemini(raw_segments, ground_truth_text, language=language, api_key=api_key)
+            else:
+                refined_lyrics = refine_lyrics_with_gemini(raw_segments, language=language, api_key=api_key)
         except Exception as e:
-            print(f"Gemini refinement crashed: {e}")
+            print(f"Gemini processing crashed: {e}")
             refined_lyrics = None
 
         # 4. Save lyrics.json
@@ -131,7 +134,7 @@ def main(audio_path, language="hi", api_key=None, model_name="large-v2", lyrics_
             print(f"--- Step 4: Lyrics saved to {lyrics_file} ---")
         else:
             # Fallback: save raw transcription
-            print("LLM refinement failed. Saving raw transcription as fallback...")
+            print("LLM processing failed. Saving raw transcription as fallback...")
             fallback_data = [{"text": s["text"], "start": s["start"], "end": s["end"]} for s in raw_segments]
             with open(lyrics_file, 'w', encoding='utf-8') as f:
                 json.dump(fallback_data, f, ensure_ascii=False, indent=2)
