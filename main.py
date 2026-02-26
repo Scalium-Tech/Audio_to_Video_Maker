@@ -8,7 +8,7 @@ load_dotenv()  # Automatically reads .env file
 from audio_utils import isolate_vocals
 from transcribe_engine import transcribe_and_align
 from text_refinery import refine_lyrics_with_gemini, inject_lyrics_with_gemini
-from gemini_align import align_and_split_lyrics
+from gemini_align import align_and_split_lyrics, full_pipeline_gemini
 from generate_background import generate_background_image, get_lyrics_text_from_json
 
 from pathlib import Path
@@ -105,29 +105,47 @@ def main(audio_path, language="hi", api_key=None, model_name="large-v2", lyrics_
             print("Failed to isolate vocals.")
             return
 
-    # 2. Transcribe and Align
+    # 2. Process lyrics
     lyrics_file = song_output_dir / "lyrics.json"
     
-    # If we are using Lyric Anchoring (forcing new text), we MUST re-run alignment.
-    # Otherwise, check if valid lyrics exist.
     if lyrics_file.exists() and not lyrics_text:
-        print(f"Lyrics already exist at: {lyrics_file}. Skipping transcription and refinement.")
-        with open(lyrics_file, 'r', encoding='utf-8') as f:
-            raw_segments = json.load(f) # Just for the fallback logic later if needed
-    else:
+        print(f"Lyrics already exist at: {lyrics_file}. Skipping.")
+    elif ground_truth_text and skip_isolation:
+        # ⚡ FAST PATH: Skip WhisperX entirely, do everything with Gemini
+        print(f"\n--- ⚡ FAST PATH: Direct Gemini Pipeline (skipping WhisperX) ---")
+        try:
+            fast_result = full_pipeline_gemini(str(audio_path), ground_truth_text, api_key=api_key)
+            if fast_result:
+                with open(lyrics_file, 'w', encoding='utf-8') as f:
+                    json.dump(fast_result, f, ensure_ascii=False, indent=2)
+                print(f"--- Lyrics saved to {lyrics_file} ---")
+            else:
+                print("  Fast path failed. Falling back to WhisperX...")
+                # Fall through to old path
+                ground_truth_text_fallback = ground_truth_text
+                ground_truth_text = None  # Reset so we don't loop
+                # Run old path below
+        except Exception as e:
+            print(f"  Fast path error: {e}. Falling back to WhisperX...")
+            fast_result = None
+        
+        if not lyrics_file.exists():
+            # Fallback: run old WhisperX path
+            ground_truth_text = ground_truth_text_fallback if 'ground_truth_text_fallback' in dir() else ground_truth_text
+    
+    if not lyrics_file.exists():
+        # Standard path: WhisperX → Injection → Alignment
         print(f"\n--- Step 2: Transcription & Alignment ---")
         raw_segments = transcribe_and_align(vocal_audio, language=language, device="cpu", model_name=model_name, lyrics_text=lyrics_text)
         if not raw_segments:
             print("Transcription failed. No segments produced.")
             return
 
-        # 2.5 Save Timing Shell (for future Injection/Debugging)
         timing_shell_file = song_output_dir / "timing_shell.json"
         with open(timing_shell_file, 'w', encoding='utf-8') as f:
             json.dump(raw_segments, f, ensure_ascii=False, indent=2)
         print(f"Timing Shell saved to {timing_shell_file}")
 
-        # 3. Refine or Inject with Gemini
         print(f"\n--- Step 3: Gemini Processing ---")
         try:
             if ground_truth_text:
@@ -138,13 +156,11 @@ def main(audio_path, language="hi", api_key=None, model_name="large-v2", lyrics_
             print(f"Gemini processing crashed: {e}")
             refined_lyrics = None
 
-        # 4. Save lyrics.json
         if refined_lyrics:
             with open(lyrics_file, 'w', encoding='utf-8') as f:
                 json.dump(refined_lyrics, f, ensure_ascii=False, indent=2)
             print(f"--- Step 4: Lyrics saved to {lyrics_file} ---")
 
-            # 3.5. Merged: Chorus Detection + Word Alignment (single Gemini call)
             print(f"\n--- Step 3.5: Gemini Align + Split (merged) ---")
             try:
                 refined_lyrics = align_and_split_lyrics(vocal_audio, refined_lyrics, api_key=api_key)
@@ -154,7 +170,6 @@ def main(audio_path, language="hi", api_key=None, model_name="large-v2", lyrics_
             except Exception as e:
                 print(f"  Gemini alignment failed: {e}. Keeping original timestamps.")
         else:
-            # Fallback: save raw transcription
             print("LLM processing failed. Saving raw transcription as fallback...")
             fallback_data = [{"text": s["text"], "start": s["start"], "end": s["end"]} for s in raw_segments]
             with open(lyrics_file, 'w', encoding='utf-8') as f:
