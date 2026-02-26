@@ -11,6 +11,68 @@ LANGUAGE_CONFIG = {
 }
 
 
+def _split_segments_at_newlines(lyrics):
+    """
+    Splits any segment that contains newlines into separate segments (one per line).
+    Uses word timestamps to determine the start/end of each sub-segment.
+    This ensures repeated bhajan verses appear as separate lyric blocks.
+    """
+    result = []
+    for seg in lyrics:
+        text = seg.get("text", "")
+        words = seg.get("words", [])
+        
+        lines = text.split("\n")
+        lines = [l.strip() for l in lines if l.strip()]
+        
+        # If only 1 line or no words, keep as-is
+        if len(lines) <= 1 or not words:
+            result.append(seg)
+            continue
+        
+        # Count words per line based on whitespace splitting
+        line_word_counts = []
+        for line in lines:
+            line_words = line.replace(",", " ").replace("।", " ").split()
+            line_word_counts.append(len(line_words))
+        
+        total_mapped = sum(line_word_counts)
+        total_actual = len(words)
+        
+        # Distribute words across lines proportionally
+        word_idx = 0
+        for line_idx, line in enumerate(lines):
+            if line_idx == len(lines) - 1:
+                count = total_actual - word_idx
+            else:
+                ratio = line_word_counts[line_idx] / max(total_mapped, 1)
+                count = max(1, round(ratio * total_actual))
+                count = min(count, total_actual - word_idx)
+            
+            line_words = words[word_idx:word_idx + count]
+            word_idx += count
+            
+            if line_words:
+                sub_seg = {
+                    "text": line,
+                    "start": round(line_words[0]["start"], 2),
+                    "end": round(line_words[-1]["end"], 2),
+                    "words": line_words
+                }
+            else:
+                seg_duration = seg["end"] - seg["start"]
+                line_duration = seg_duration / len(lines)
+                sub_seg = {
+                    "text": line,
+                    "start": round(seg["start"] + line_idx * line_duration, 2),
+                    "end": round(seg["start"] + (line_idx + 1) * line_duration, 2),
+                }
+            result.append(sub_seg)
+    
+    print(f"  [SPLIT] {len(lyrics)} segments -> {len(result)} segments (split at newlines)", flush=True)
+    return result
+
+
 def _reattach_word_timestamps(refined_lyrics, raw_segments):
     """
     Re-attaches word-level timestamps from the original WhisperX segments
@@ -250,6 +312,7 @@ Segment-Level Input Data:
                     refined_lyrics = json.loads(json_str)
                     # Re-attach word-level timestamps from the original segments
                     refined_lyrics = _reattach_word_timestamps(refined_lyrics, raw_segments)
+                    refined_lyrics = _split_segments_at_newlines(refined_lyrics)
                     print(f"SUCCESS: Refined lyrics generated using {model_name} (with word timestamps)", flush=True)
                     return refined_lyrics
                 else:
@@ -337,6 +400,7 @@ EXAMPLE OF WHAT IS FORBIDDEN:
                     injected_lyrics = json.loads(text_response[start_idx:end_idx])
                     # Re-attach word-level timestamps from the timing shell
                     injected_lyrics = _reattach_word_timestamps(injected_lyrics, timing_shell)
+                    injected_lyrics = _split_segments_at_newlines(injected_lyrics)
                     return injected_lyrics
             else:
                 print(f"Model {model_name} failed: {response.status_code}")

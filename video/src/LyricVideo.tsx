@@ -195,6 +195,7 @@ export const LyricVideo: React.FC<LyricVideoProps> = ({ audioSrc, lyrics, backgr
             >
                 {activeLyric && (
                     <LyricDisplay
+                        key={`lyric-${activeLyric.start}-${activeLyric.end}`}
                         text={activeLyric.text}
                         words={activeLyric.words}
                         startFrame={activeLyric.start * fps}
@@ -243,68 +244,10 @@ export const LyricVideo: React.FC<LyricVideoProps> = ({ audioSrc, lyrics, backgr
     );
 };
 
-// ─── Improved LyricDisplay ──────────────────────────────────────────────────
-// Features:
-//  1. Robust word-to-line mapping (newline-position based)
-//  2. Stable React keys (absolute line index)
-//  3. Smooth vertical slide when 2-line window shifts
-//  4. Dimmed preview of the next upcoming line
-//  5. Dynamic font sizing for long lines
 
-const MAX_VISIBLE_LINES = 2;
-const SLIDE_TRANSITION_FRAMES = 10; // frames for smooth slide between line windows
-const BASE_FONT_SIZE = 56;
-const MIN_FONT_SIZE = 36;
-const LONG_LINE_CHAR_THRESHOLD = 30; // start shrinking after this many chars
+// ─── Karaoke-style Smooth Sweep LyricDisplay ────────────────────────────────
+const FONT_SIZE = 44;
 
-/**
- * Robustly map words to lines using newline positions in text.
- * Instead of counting words per line (fragile), we find which words
- * belong to each line based on cumulative word consumption.
- */
-const mapWordsToLines = (
-    text: string,
-    words: WordTimestamp[]
-): { lineText: string; words: WordTimestamp[]; absoluteIndex: number }[] => {
-    const lines = text.split("\n");
-    const result: { lineText: string; words: WordTimestamp[]; absoluteIndex: number }[] = [];
-    let wordIdx = 0;
-
-    for (let i = 0; i < lines.length; i++) {
-        const lineText = lines[i].trim();
-        if (!lineText) {
-            result.push({ lineText, words: [], absoluteIndex: i });
-            continue;
-        }
-        const lineWordCount = lineText.split(/\s+/).filter(Boolean).length;
-        const lineWords = words.slice(wordIdx, wordIdx + lineWordCount);
-        wordIdx += lineWordCount;
-        result.push({ lineText, words: lineWords, absoluteIndex: i });
-    }
-
-    // If we still have leftover words, attach them to the last line
-    if (wordIdx < words.length && result.length > 0) {
-        result[result.length - 1].words.push(...words.slice(wordIdx));
-    }
-
-    return result;
-};
-
-/**
- * Compute dynamic font size based on the longest visible line.
- */
-const computeFontSize = (
-    visibleLines: { lineText: string }[]
-): number => {
-    const maxChars = Math.max(...visibleLines.map((l) => l.lineText.length), 1);
-    if (maxChars <= LONG_LINE_CHAR_THRESHOLD) return BASE_FONT_SIZE;
-    // Linearly shrink between BASE and MIN over the range [THRESHOLD .. THRESHOLD*2]
-    const ratio = Math.min(
-        1,
-        (maxChars - LONG_LINE_CHAR_THRESHOLD) / LONG_LINE_CHAR_THRESHOLD
-    );
-    return Math.round(BASE_FONT_SIZE - (BASE_FONT_SIZE - MIN_FONT_SIZE) * ratio);
-};
 
 const LyricDisplay: React.FC<{
     text: string;
@@ -314,11 +257,11 @@ const LyricDisplay: React.FC<{
     currentFrame: number;
     currentTime: number;
     fps: number;
-}> = ({ text, words, startFrame, endFrame, currentFrame, currentTime, fps }) => {
+}> = ({ text, words, startFrame, endFrame, currentFrame, currentTime }) => {
     const totalFrames = endFrame - startFrame;
     const safeFade = Math.min(8, Math.floor(totalFrames / 3));
 
-    // Overall fade in/out for the entire lyric block
+    // Overall fade in/out
     const blockOpacity = interpolate(
         currentFrame,
         [startFrame, startFrame + safeFade, endFrame - safeFade, endFrame],
@@ -333,165 +276,66 @@ const LyricDisplay: React.FC<{
         { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
     );
 
-    // ── Build line groups ──
-    const allLines = words && words.length > 0
-        ? mapWordsToLines(text, words)
-        : text.split("\n").map((lineText, i) => ({
-            lineText: lineText.trim(),
-            words: [] as WordTimestamp[],
-            absoluteIndex: i,
-        }));
-
-    // ── Find active line index (which line has the currently sung word) ──
-    let activeLineIdx = 0;
-    for (let i = 0; i < allLines.length; i++) {
-        for (const w of allLines[i].words) {
-            if (currentTime >= w.start) {
-                activeLineIdx = i;
-            }
-        }
-    }
-
-    // ── Compute visible window (max 2 lines) ──
-    let windowStart = 0;
-    if (allLines.length > MAX_VISIBLE_LINES) {
-        windowStart = Math.min(activeLineIdx, allLines.length - MAX_VISIBLE_LINES);
-    }
-    const visibleLines = allLines.slice(windowStart, windowStart + MAX_VISIBLE_LINES);
-
-    // ── Preview line: the line right after the visible window (dimmed) ──
-    const previewLine =
-        windowStart + MAX_VISIBLE_LINES < allLines.length
-            ? allLines[windowStart + MAX_VISIBLE_LINES]
-            : null;
-
-    // ── Smooth slide transition ──
-    // When the window shifts, animate a slight upward slide
-    // We detect the shift by looking at the first visible word's start time
-    let slideOffset = 0;
-    if (allLines.length > MAX_VISIBLE_LINES && visibleLines[0].words.length > 0) {
-        // The moment the window changes is when the first word of the current
-        // visible first line starts. Animate around that point.
-        const windowChangeTime = visibleLines[0].words[0].start;
-        const windowChangeFrame = windowChangeTime * fps;
-        if (
-            currentFrame >= windowChangeFrame &&
-            currentFrame <= windowChangeFrame + SLIDE_TRANSITION_FRAMES
-        ) {
-            slideOffset = interpolate(
-                currentFrame,
-                [windowChangeFrame, windowChangeFrame + SLIDE_TRANSITION_FRAMES],
-                [-30, 0],
-                { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-            );
-        }
-    }
-
-    // ── Dynamic font size ──
-    const fontSize = computeFontSize(visibleLines);
-
-    // ── Render a single word with karaoke highlighting ──
-    const renderWord = (w: WordTimestamp, keyPrefix: string, idx: number) => {
-        const isActive = currentTime >= w.start && currentTime <= w.end;
-        const isPast = currentTime > w.end;
-
-        const wordStartFrame = w.start * fps;
-        const wordEndFrame = w.end * fps;
-        const frameDuration = wordEndFrame - wordStartFrame;
-
-        let highlightProgress: number;
-        if (frameDuration <= 3) {
-            highlightProgress = isActive || isPast ? 1 : 0;
-        } else {
-            highlightProgress = interpolate(
-                currentFrame,
-                [wordStartFrame, wordStartFrame + 2, wordEndFrame - 1, wordEndFrame],
-                [0, 1, 1, 0],
-                { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-            );
-        }
-
-        let color = "#ffffff";
-        let textShadow =
-            "0 0 40px rgba(99, 102, 241, 0.5), 0 4px 20px rgba(0,0,0,0.5)";
-
-        if (isActive) {
-            color = `rgb(255, ${255 - Math.round(196 * highlightProgress)}, ${255 - Math.round(196 * highlightProgress)})`;
-            textShadow = `0 0 30px rgba(255, 59, 59, ${0.6 * highlightProgress}), 0 0 60px rgba(255, 59, 59, ${0.3 * highlightProgress}), 0 4px 20px rgba(0,0,0,0.5)`;
-        } else if (isPast) {
-            color = "rgba(255, 120, 120, 0.7)";
-            textShadow =
-                "0 0 20px rgba(255, 59, 59, 0.2), 0 4px 20px rgba(0,0,0,0.5)";
-        }
-
-        const scale = isActive ? 1 + 0.05 * highlightProgress : 1;
-
-        return (
-            <span
-                key={`${keyPrefix}-${idx}`}
-                style={{
-                    color,
-                    textShadow,
-                    display: "inline-block",
-                    transform: `scale(${scale})`,
-                    marginRight: "0.25em",
-                }}
-            >
-                {w.word}
-            </span>
-        );
-    };
+    // Use word timestamps if available, otherwise split text
+    const displayWords = words && words.length > 0
+        ? words
+        : text.split(/\s+/).filter(Boolean).map((w, i, arr) => {
+            const segStart = startFrame / 30;
+            const segEnd = endFrame / 30;
+            const slot = (segEnd - segStart) / arr.length;
+            return { word: w, start: segStart + i * slot, end: segStart + (i + 1) * slot };
+        });
 
     return (
         <div
             style={{
                 opacity: blockOpacity,
-                transform: `translateY(${blockTranslateY + slideOffset}px)`,
+                transform: `translateY(${blockTranslateY}px)`,
                 fontFamily:
                     "'Noto Sans Devanagari', 'Mangal', 'Kokila', sans-serif",
-                fontSize,
+                fontSize: FONT_SIZE,
                 fontWeight: 700,
-                color: "#ffffff",
                 textAlign: "center",
-                maxWidth: "80%",
-                lineHeight: 1.5,
-                whiteSpace: "pre-wrap",
-                textShadow:
-                    words && words.length > 0
-                        ? "none"
-                        : "0 0 40px rgba(99, 102, 241, 0.5), 0 4px 20px rgba(0,0,0,0.5)",
+                maxWidth: "85%",
+                lineHeight: 1.6,
                 letterSpacing: 1,
+                maxHeight: Math.round(FONT_SIZE * 1.6 * 2),
+                overflow: "hidden" as const,
             }}
         >
-            {/* ── Active visible lines ── */}
-            {visibleLines.map((line, idx) => (
-                <div
-                    key={`line-abs-${line.absoluteIndex}`}
-                    style={{ marginBottom: idx < visibleLines.length - 1 ? 8 : 0 }}
-                >
-                    {line.words.length > 0
-                        ? line.words.map((w, i) =>
-                            renderWord(w, `L${line.absoluteIndex}`, i)
-                        )
-                        : line.lineText}
-                </div>
-            ))}
+            {displayWords.map((w, idx) => {
+                const isActive = currentTime >= w.start && currentTime <= w.end;
+                const isPast = currentTime > w.end;
 
-            {/* ── Dimmed preview of the next line ── */}
-            {previewLine && previewLine.lineText && (
-                <div
-                    key={`line-abs-${previewLine.absoluteIndex}`}
-                    style={{
-                        marginTop: 12,
-                        opacity: 0.25,
-                        fontSize: Math.round(fontSize * 0.75),
-                        color: "rgba(255, 255, 255, 0.5)",
-                        textShadow: "none",
-                    }}
-                >
-                    {previewLine.lineText}
-                </div>
-            )}
+                let color = "#ffffff";
+                let textShadow = "0 0 40px rgba(99, 102, 241, 0.5), 0 4px 20px rgba(0,0,0,0.5)";
+
+                if (isPast) {
+                    color = "rgba(255, 100, 100, 0.85)";
+                    textShadow = "0 0 20px rgba(255, 59, 59, 0.3), 0 4px 20px rgba(0,0,0,0.5)";
+                }
+                if (isActive) {
+                    color = "rgb(255, 80, 80)";
+                    textShadow = "0 0 30px rgba(255, 59, 59, 0.6), 0 0 60px rgba(255, 59, 59, 0.3), 0 4px 20px rgba(0,0,0,0.5)";
+
+                }
+
+                return (
+                    <span
+                        key={`w-${idx}`}
+                        style={{
+                            color,
+                            textShadow,
+                            display: "inline-block",
+                            marginRight: "0.4em",
+                        }}
+                    >
+                        {w.word}{" "}
+                    </span>
+                );
+            })}
         </div>
     );
 };
+
+
