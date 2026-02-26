@@ -228,18 +228,19 @@ def full_pipeline_gemini(audio_path, ground_truth_text, api_key=None):
         audio_duration = round(len(audio_np) / sample_rate, 2)
         print(f"  Audio duration: {audio_duration:.1f}s", flush=True)
         
-        from pyannote.audio import Model
-        from pyannote.audio.pipelines import VoiceActivityDetection
+        # Use WhisperX's bundled VAD model (local, no HuggingFace auth needed)
+        from whisperx.vads.pyannote import load_vad_model, Binarize
         
-        vad_model = Model.from_pretrained("pyannote/segmentation", use_auth_token=False)
-        vad_pipeline = VoiceActivityDetection(segmentation=vad_model)
-        vad_pipeline.instantiate({"min_duration_on": 0.3, "min_duration_off": 0.3})
-        
+        vad_pipeline = load_vad_model("cpu")
         audio_tensor = torch.from_numpy(audio_np).unsqueeze(0)
         vad_result = vad_pipeline({"waveform": audio_tensor, "sample_rate": sample_rate})
         
+        # Binarize to get clean speech segments
+        binarize = Binarize(max_duration=30.0)
+        speech_annotation = binarize(vad_result)
+        
         speech_segments = []
-        for seg in vad_result.get_timeline().support():
+        for seg in speech_annotation.get_timeline():
             speech_segments.append({"start": round(seg.start, 2), "end": round(seg.end, 2)})
         
         print(f"  VAD: {len(speech_segments)} speech regions in {time.time()-vad_start:.1f}s", flush=True)
