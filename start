@@ -50,7 +50,7 @@ echo ""
 # Ensure ground truth lyrics folder exists
 mkdir -p ground_truth_lyrics
 
-# Run the batch processor
+# Run the batch processor (pass all args through, e.g. --workers 3)
 python batch_processor.py "$@"
 
 echo ""

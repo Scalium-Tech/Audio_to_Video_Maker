@@ -8,7 +8,7 @@ load_dotenv()  # Automatically reads .env file
 from audio_utils import isolate_vocals
 from transcribe_engine import transcribe_and_align
 from text_refinery import refine_lyrics_with_gemini, inject_lyrics_with_gemini
-from gemini_align import align_lyrics_with_gemini, detect_chorus_repetitions
+from gemini_align import align_and_split_lyrics
 from generate_background import generate_background_image, get_lyrics_text_from_json
 
 from pathlib import Path
@@ -141,24 +141,13 @@ def main(audio_path, language="hi", api_key=None, model_name="large-v2", lyrics_
                 json.dump(refined_lyrics, f, ensure_ascii=False, indent=2)
             print(f"--- Step 4: Lyrics saved to {lyrics_file} ---")
 
-            # 3.4. Auto-detect chorus repetitions
-            print(f"\n--- Step 3.4: Auto-detect Chorus Repetitions ---")
+            # 3.5. Merged: Chorus Detection + Word Alignment (single Gemini call)
+            print(f"\n--- Step 3.5: Gemini Align + Split (merged) ---")
             try:
-                refined_lyrics = detect_chorus_repetitions(vocal_audio, refined_lyrics, api_key=api_key)
+                refined_lyrics = align_and_split_lyrics(vocal_audio, refined_lyrics, api_key=api_key)
                 with open(lyrics_file, 'w', encoding='utf-8') as f:
                     json.dump(refined_lyrics, f, ensure_ascii=False, indent=2)
-            except Exception as e:
-                print(f"  Repetition detection failed: {e}")
-
-            # 3.5. Gemini Forced Alignment — get precise word timestamps from audio
-            print(f"\n--- Step 3.5: Gemini Forced Alignment (word-level timing) ---")
-            try:
-                aligned_lyrics = align_lyrics_with_gemini(vocal_audio, refined_lyrics, api_key=api_key)
-                if aligned_lyrics:
-                    refined_lyrics = aligned_lyrics
-                    with open(lyrics_file, 'w', encoding='utf-8') as f:
-                        json.dump(refined_lyrics, f, ensure_ascii=False, indent=2)
-                    print(f"  Aligned lyrics saved to {lyrics_file}")
+                print(f"  Aligned lyrics saved to {lyrics_file}")
             except Exception as e:
                 print(f"  Gemini alignment failed: {e}. Keeping original timestamps.")
         else:

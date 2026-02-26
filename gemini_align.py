@@ -198,6 +198,209 @@ Return ONLY the JSON array:"""
     return lyrics_segments
 
 
+def align_and_split_lyrics(audio_path, lyrics_segments, api_key=None):
+    """
+    MERGED: Chorus detection + word-level alignment in ONE Gemini call.
+    Saves ~60s per song by avoiding a second audio upload.
+    
+    1. Detects how many times each line repeats (chorus splitting)
+    2. Provides word-level timestamps for alignment
+    
+    Returns: Updated lyrics_segments with splits and word timestamps.
+    """
+    import requests
+    
+    api_key = api_key or os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        print("  WARNING: No GEMINI_API_KEY. Skipping alignment.")
+        return lyrics_segments
+    
+    audio_path = Path(audio_path)
+    if not audio_path.exists():
+        print(f"  WARNING: Audio file not found: {audio_path}")
+        return lyrics_segments
+    
+    audio_bytes = audio_path.read_bytes()
+    audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+    
+    ext = audio_path.suffix.lower()
+    mime_map = {".mp3": "audio/mpeg", ".wav": "audio/wav", ".m4a": "audio/mp4"}
+    mime_type = mime_map.get(ext, "audio/mpeg")
+    
+    # Build segment info
+    seg_info = ""
+    for i, seg in enumerate(lyrics_segments):
+        seg_info += f'Segment {i}: [{seg["start"]:.2f}s - {seg["end"]:.2f}s] "{seg["text"]}"\n'
+    
+    prompt = f"""You are an audio-to-lyrics alignment tool. I'm giving you an audio file and lyrics with FIXED segment timing.
+
+LYRICS WITH FIXED TIMING:
+{seg_info}
+
+DO TWO THINGS for each segment:
+
+1. COUNT REPETITIONS: How many times is the text actually sung in that time range?
+   - If sung once, repetitions = 1
+   - If it's a repeated chorus/refrain sung 2-4+ times, give the actual count
+
+2. WORD TIMESTAMPS: For the FIRST occurrence of the text in each segment, provide word-level timestamps.
+   - Word start/end MUST be within the segment's time boundaries
+   - Words must be chronological
+
+Return a JSON array where each element has:
+- "seg_index": segment number (0-based)
+- "repetitions": how many times the line is sung (1 if not repeated)
+- "words": array of {{"word": "...", "start": X.XX, "end": X.XX}} for the FIRST occurrence
+
+Example:
+[
+  {{"seg_index": 0, "repetitions": 1, "words": [{{"word": "hello", "start": 1.0, "end": 1.5}}]}},
+  {{"seg_index": 1, "repetitions": 4, "words": [{{"word": "chorus", "start": 5.0, "end": 5.5}}]}}
+]
+
+Return ONLY the JSON array:"""
+
+    models = ["gemini-2.5-flash", "gemini-2.0-flash"]
+    
+    for model_name in models:
+        print(f"  Attempting merged align+split with {model_name}...", flush=True)
+        
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+        
+        payload = {
+            "contents": [{"parts": [
+                {"inlineData": {"mimeType": mime_type, "data": audio_b64}},
+                {"text": prompt}
+            ]}],
+            "generationConfig": {
+                "temperature": 0.1,
+                "maxOutputTokens": 65536,
+            }
+        }
+        
+        try:
+            response = requests.post(url, json=payload, timeout=300)
+            
+            if response.status_code != 200:
+                print(f"  {model_name} failed: HTTP {response.status_code}", flush=True)
+                continue
+            
+            result = response.json()
+            parts = result["candidates"][0]["content"]["parts"]
+            all_texts = [p["text"] for p in parts if "text" in p]
+            text_response = all_texts[-1] if all_texts else ""
+            
+            if not text_response:
+                print(f"  {model_name}: No text in response", flush=True)
+                continue
+            
+            # Parse JSON — handle code fences
+            try:
+                data = json.loads(text_response.strip())
+            except json.JSONDecodeError:
+                stripped = text_response.replace("```json", "").replace("```", "").strip()
+                try:
+                    data = json.loads(stripped)
+                except json.JSONDecodeError:
+                    idx_s = stripped.find("[")
+                    idx_e = stripped.rfind("]")
+                    if idx_s >= 0 and idx_e > idx_s:
+                        data = json.loads(stripped[idx_s:idx_e+1])
+                    else:
+                        print(f"  {model_name}: No JSON found", flush=True)
+                        continue
+            
+            if not isinstance(data, list) or len(data) == 0:
+                print(f"  {model_name}: Empty response", flush=True)
+                continue
+            
+            # Build lookup
+            seg_data = {}
+            for item in data:
+                idx = item.get("seg_index", -1)
+                if idx >= 0:
+                    seg_data[idx] = item
+            
+            # Process: split repetitions + apply word timestamps
+            expanded = []
+            for i, seg in enumerate(lyrics_segments):
+                info = seg_data.get(i, {})
+                reps = max(1, min(info.get("repetitions", 1), 10))
+                gemini_words = info.get("words", [])
+                
+                if reps > 1:
+                    # Split into repetitions
+                    dur = seg["end"] - seg["start"]
+                    rep_dur = dur / reps
+                    print(f"  Seg {i}: \"{seg['text'][:35]}\" → {reps}x ({rep_dur:.1f}s each)", flush=True)
+                    
+                    for r in range(reps):
+                        rep_start = round(seg["start"] + r * rep_dur, 2)
+                        rep_end = round(seg["start"] + (r + 1) * rep_dur, 2)
+                        
+                        if r == 0 and gemini_words:
+                            # Use Gemini words for first repetition, clamped
+                            words = _clamp_words(gemini_words, rep_start, rep_end)
+                        else:
+                            # Even distribution for subsequent repetitions
+                            words = _even_words(seg["text"], rep_start, rep_end)
+                        
+                        expanded.append({
+                            "text": seg["text"],
+                            "start": rep_start,
+                            "end": rep_end,
+                            "words": words
+                        })
+                else:
+                    # Single occurrence — apply Gemini word timestamps
+                    if gemini_words:
+                        seg["words"] = _clamp_words(gemini_words, seg["start"], seg["end"])
+                    expanded.append(seg)
+            
+            print(f"  SUCCESS: {len(lyrics_segments)} → {len(expanded)} segments ({model_name})", flush=True)
+            
+            # Show sample
+            for seg in expanded[:2]:
+                print(f"    [{seg['start']:.1f}-{seg['end']:.1f}s] {seg['text'][:40]}...")
+                for w in seg.get("words", [])[:3]:
+                    print(f"      {w['start']:.2f}-{w['end']:.2f}: \"{w['word']}\"")
+            
+            return expanded
+            
+        except json.JSONDecodeError as e:
+            print(f"  {model_name}: JSON parse error: {e}", flush=True)
+        except Exception as e:
+            print(f"  {model_name}: Error: {e}", flush=True)
+    
+    print("  All models failed. Keeping original segments.", flush=True)
+    return lyrics_segments
+
+
+def _clamp_words(gemini_words, seg_start, seg_end):
+    """Clamp word timestamps into segment boundaries and cap duration."""
+    clamped = []
+    for w in gemini_words:
+        ws = max(seg_start, min(w["start"], seg_end))
+        we = max(ws + 0.05, min(w["end"], seg_end))
+        if we - ws > 1.5:
+            we = round(ws + 1.5, 2)
+        clamped.append({"word": w["word"], "start": round(ws, 2), "end": round(we, 2)})
+    clamped.sort(key=lambda w: w["start"])
+    return clamped
+
+
+def _even_words(text, start, end):
+    """Create evenly distributed word timestamps."""
+    text_words = text.replace(",", " ").replace("।", " ").replace("!", " ").split()
+    text_words = [w.strip() for w in text_words if w.strip()]
+    n = max(len(text_words), 1)
+    dur = end - start
+    slot = dur / n
+    return [{"word": tw, "start": round(start + j * slot, 2),
+             "end": round(start + (j + 1) * slot - 0.03, 2)}
+            for j, tw in enumerate(text_words)]
+
+
 def detect_chorus_repetitions(audio_path, lyrics_segments, api_key=None):
     """
     Use Gemini to detect how many times each line is actually repeated in the audio.
