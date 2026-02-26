@@ -2,6 +2,7 @@ import React from "react";
 import {
     AbsoluteFill,
     Audio,
+    Img,
     interpolate,
     useCurrentFrame,
     useVideoConfig,
@@ -23,9 +24,10 @@ interface LyricLine {
 export interface LyricVideoProps {
     audioSrc: string;
     lyrics: LyricLine[];
+    backgroundImage?: string;
 }
 
-export const LyricVideo: React.FC<LyricVideoProps> = ({ audioSrc, lyrics }) => {
+export const LyricVideo: React.FC<LyricVideoProps> = ({ audioSrc, lyrics, backgroundImage }) => {
     const frame = useCurrentFrame();
     const { fps } = useVideoConfig();
     const currentTime = frame / fps;
@@ -35,10 +37,13 @@ export const LyricVideo: React.FC<LyricVideoProps> = ({ audioSrc, lyrics }) => {
         (l) => currentTime >= l.start && currentTime <= l.end
     );
 
+    // Slow Ken Burns zoom for background image (very render-friendly)
+    const bgScale = 1 + (frame * 0.00008);
+
     return (
         <AbsoluteFill
             style={{
-                background: "linear-gradient(135deg, #0f0c29 0%, #1a1a2e 40%, #16213e 100%)",
+                background: `linear-gradient(${135 + Math.sin(frame * 0.003) * 10}deg, hsl(${250 + Math.sin(frame * 0.005) * 15}, 40%, 8%) 0%, hsl(${230 + Math.cos(frame * 0.004) * 12}, 35%, 12%) 40%, hsl(${210 + Math.sin(frame * 0.006) * 10}, 38%, 14%) 100%)`,
                 justifyContent: "center",
                 alignItems: "center",
             }}
@@ -46,50 +51,46 @@ export const LyricVideo: React.FC<LyricVideoProps> = ({ audioSrc, lyrics }) => {
             {/* Audio */}
             <Audio src={audioSrc} />
 
-            {/* ═══════════════════════════════════════════════════════════
-                 LAYER 1: Breathing Gradient Orbs (deepest background)
-                 ═══════════════════════════════════════════════════════════ */}
-            <div
-                style={{
-                    position: "absolute",
-                    width: 500,
-                    height: 500,
-                    borderRadius: "50%",
-                    background:
-                        "radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, transparent 70%)",
-                    filter: "blur(80px)",
-                    top: "30%",
-                    left: "25%",
-                    transform: `translate(-50%, -50%) scale(${1 + Math.sin(frame * 0.015) * 0.15})`,
-                    zIndex: 1,
-                }}
-            />
-            <div
-                style={{
-                    position: "absolute",
-                    width: 450,
-                    height: 450,
-                    borderRadius: "50%",
-                    background:
-                        "radial-gradient(circle, rgba(168, 85, 247, 0.14) 0%, transparent 70%)",
-                    filter: "blur(70px)",
-                    top: "65%",
-                    left: "70%",
-                    transform: `translate(-50%, -50%) scale(${1 + Math.cos(frame * 0.012) * 0.18})`,
-                    zIndex: 1,
-                }}
-            />
+            {/* Background Image (if provided) */}
+            {backgroundImage && (
+                <>
+                    <Img
+                        src={backgroundImage}
+                        style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            transform: `scale(${bgScale})`,
+                            zIndex: 0,
+                        }}
+                    />
+                    {/* Dark overlay so lyrics stay readable */}
+                    <div
+                        style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            width: "100%",
+                            height: "100%",
+                            background: "rgba(0, 0, 0, 0.40)",
+                            zIndex: 1,
+                        }}
+                    />
+                </>
+            )}
 
             {/* ═══════════════════════════════════════════════════════════
-                 LAYER 2: Pulsing Concentric Rings (soundwave effect)
+                 Background: Pulsing Soundwave Rings
                  ═══════════════════════════════════════════════════════════ */}
-            {[0, 1, 2].map((ringIdx) => {
-                // Each ring loops over 120 frames, staggered by 40 frames
-                const ringCycle = 120;
-                const offset = ringIdx * 40;
+            {[0, 1, 2, 3, 4].map((ringIdx) => {
+                const ringCycle = 150;
+                const offset = ringIdx * 30;
                 const ringProgress = ((frame + offset) % ringCycle) / ringCycle;
-                const ringScale = 0.3 + ringProgress * 1.8;
-                const ringOpacity = Math.max(0, 0.25 - ringProgress * 0.3);
+                const ringScale = 0.2 + ringProgress * 2.2;
+                const ringOpacity = Math.max(0, 0.5 - ringProgress * 0.55);
                 return (
                     <div
                         key={`ring-${ringIdx}`}
@@ -97,10 +98,10 @@ export const LyricVideo: React.FC<LyricVideoProps> = ({ audioSrc, lyrics }) => {
                             position: "absolute",
                             top: "50%",
                             left: "50%",
-                            width: 300,
-                            height: 300,
+                            width: 500,
+                            height: 500,
                             borderRadius: "50%",
-                            border: "1.5px solid rgba(99, 102, 241, 0.5)",
+                            border: `3px solid rgba(139, 92, 246, ${0.6 - ringProgress * 0.5})`,
                             transform: `translate(-50%, -50%) scale(${ringScale})`,
                             opacity: ringOpacity,
                             zIndex: 2,
@@ -110,136 +111,67 @@ export const LyricVideo: React.FC<LyricVideoProps> = ({ audioSrc, lyrics }) => {
             })}
 
             {/* ═══════════════════════════════════════════════════════════
-                 LAYER 3: Floating Glowing Particles
+                 Flashy Light Bursts (no blur, render-friendly)
                  ═══════════════════════════════════════════════════════════ */}
-            {Array.from({ length: 10 }).map((_, i) => {
-                // Deterministic pseudo-random placement using index
-                const seed = (i + 1) * 7.3;
-                const baseX = ((seed * 13.7) % 90) + 5;   // 5-95% range
-                const baseY = ((seed * 17.1) % 80) + 10;  // 10-90% range
-                const speed = 0.008 + (i % 5) * 0.003;
-                const amplitude = 15 + (i % 4) * 8;
-                const size = 3 + (i % 3) * 2;
-                const particleOpacity = 0.15 + (i % 4) * 0.08;
-
-                const x = baseX + Math.sin(frame * speed + seed) * amplitude * 0.3;
-                const y = baseY + Math.cos(frame * speed * 0.7 + seed) * amplitude * 0.2;
-
+            {[0, 1, 2, 3].map((i) => {
+                const cycle = 70 + i * 20;
+                const progress = ((frame + i * 30) % cycle) / cycle;
+                const window = 0.15;
+                const active = progress < window;
+                const opacity = active
+                    ? progress < window / 2
+                        ? (progress / (window / 2)) * 0.7
+                        : ((window - progress) / (window / 2)) * 0.7
+                    : 0;
+                const scale = active ? 0.5 + (progress / window) * 2.5 : 0;
+                const positions = [
+                    { x: 12, y: 18 }, { x: 85, y: 25 },
+                    { x: 18, y: 78 }, { x: 80, y: 72 },
+                ];
+                const p = positions[i];
                 return (
                     <div
-                        key={`particle-${i}`}
+                        key={`flash-${i}`}
                         style={{
                             position: "absolute",
-                            left: `${x}%`,
-                            top: `${y}%`,
-                            width: size,
-                            height: size,
+                            left: `${p.x}%`,
+                            top: `${p.y}%`,
+                            width: 250,
+                            height: 250,
                             borderRadius: "50%",
-                            background:
-                                i % 3 === 0
-                                    ? "rgba(99, 102, 241, 0.9)"
-                                    : i % 3 === 1
-                                        ? "rgba(168, 85, 247, 0.9)"
-                                        : "rgba(236, 72, 153, 0.8)",
-                            boxShadow: `0 0 ${size * 3}px ${i % 3 === 0
-                                ? "rgba(99, 102, 241, 0.6)"
-                                : i % 3 === 1
-                                    ? "rgba(168, 85, 247, 0.6)"
-                                    : "rgba(236, 72, 153, 0.5)"
-                                }`,
-                            opacity: particleOpacity + Math.sin(frame * 0.03 + i) * 0.08,
+                            background: "radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255, 255, 255, 0.29) 35%, transparent 65%)",
+                            transform: `translate(-50%,-50%) scale(${scale})`,
+                            opacity,
                             zIndex: 3,
+                            pointerEvents: "none" as const,
                         }}
                     />
                 );
             })}
 
             {/* ═══════════════════════════════════════════════════════════
-                 LAYER 4: Floating Music Notes
+                 Sparkle Dots (tiny twinkling points)
                  ═══════════════════════════════════════════════════════════ */}
-            {["♪", "♫", "♩", "♪", "♫", "♩"].map((note, i) => {
-                // Each note loops upward over a cycle, then resets to bottom
-                const noteCycle = 200 + i * 30; // different speeds
-                const noteOffset = i * 45;
-                const noteProgress = ((frame + noteOffset) % noteCycle) / noteCycle;
-
-                const noteX = 8 + ((i * 17.3) % 80);  // spread across screen
-                const noteY = 100 - noteProgress * 120; // drift upward (100% → -20%)
-                const noteOpacity =
-                    noteProgress < 0.1
-                        ? noteProgress / 0.1 * 0.3         // fade in
-                        : noteProgress > 0.85
-                            ? (1 - noteProgress) / 0.15 * 0.3  // fade out
-                            : 0.3;                              // steady
-                const noteRotate = Math.sin(frame * 0.02 + i * 2) * 15;
-                const noteScale = 0.8 + Math.sin(frame * 0.025 + i) * 0.15;
-
+            {Array.from({ length: 8 }).map((_, i) => {
+                const seed = (i + 1) * 13.7;
+                const sx = ((seed * 7.3) % 90) + 5;
+                const sy = ((seed * 11.1) % 85) + 7;
+                const twinkle = 0.15 + Math.pow(Math.sin(frame * (0.05 + i * 0.012) + i * 2.3), 2) * 0.85;
+                const size = 3 + (i % 3);
+                const colors = ["#c4b5fd", "#93c5fd", "#f9a8d4", "#fde68a"];
                 return (
                     <div
-                        key={`note-${i}`}
+                        key={`sparkle-${i}`}
                         style={{
                             position: "absolute",
-                            left: `${noteX}%`,
-                            top: `${noteY}%`,
-                            fontSize: 28 + (i % 3) * 8,
-                            color: "rgba(255, 255, 255, 0.6)",
-                            textShadow: "0 0 15px rgba(99, 102, 241, 0.5)",
-                            opacity: noteOpacity,
-                            transform: `rotate(${noteRotate}deg) scale(${noteScale})`,
-                            zIndex: 4,
-                            pointerEvents: "none" as const,
-                        }}
-                    >
-                        {note}
-                    </div>
-                );
-            })}
-
-            {/* ═══════════════════════════════════════════════════════════
-                 LAYER 4.5: Flashy Light Bursts (BIG)
-                 ═══════════════════════════════════════════════════════════ */}
-            {[0, 1, 2, 3].map((flashIdx) => {
-                // Each flash has a different cycle and position
-                const flashCycle = 70 + flashIdx * 20; // staggered timing
-                const flashOffset = flashIdx * 30;
-                const flashProgress = ((frame + flashOffset) % flashCycle) / flashCycle;
-
-                // Flash is only visible for a brief moment
-                const flashWindow = 0.15;
-                const flashActive = flashProgress < flashWindow;
-                const flashOpacity = flashActive
-                    ? flashProgress < flashWindow / 2
-                        ? (flashProgress / (flashWindow / 2)) * 0.8  // ramp up
-                        : ((flashWindow - flashProgress) / (flashWindow / 2)) * 0.8  // ramp down
-                    : 0;
-
-                // Position each flash at different spots
-                const positions = [
-                    { x: 15, y: 20 },
-                    { x: 82, y: 30 },
-                    { x: 20, y: 72 },
-                    { x: 75, y: 68 },
-                ];
-                const pos = positions[flashIdx];
-                const flashScale = flashActive ? 0.8 + (flashProgress / flashWindow) * 2.5 : 0;
-
-                return (
-                    <div
-                        key={`flash-${flashIdx}`}
-                        style={{
-                            position: "absolute",
-                            left: `${pos.x}%`,
-                            top: `${pos.y}%`,
-                            width: 300,
-                            height: 300,
+                            left: `${sx}%`,
+                            top: `${sy}%`,
+                            width: size,
+                            height: size,
                             borderRadius: "50%",
-                            background:
-                                "radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(168, 85, 247, 0.4) 30%, rgba(99, 102, 241, 0.15) 55%, transparent 70%)",
-                            transform: `translate(-50%, -50%) scale(${flashScale})`,
-                            opacity: flashOpacity,
-                            filter: "blur(12px)",
-                            zIndex: 5,
-                            pointerEvents: "none" as const,
+                            backgroundColor: colors[i % 4],
+                            opacity: twinkle,
+                            zIndex: 3,
                         }}
                     />
                 );

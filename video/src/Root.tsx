@@ -19,6 +19,7 @@ export const RemotionRoot: React.FC = () => {
                 defaultProps={{
                     audioSrc: staticFile("audio.mp3"),
                     lyrics: lyricsData,
+                    backgroundImage: staticFile("background.jpg"),
                 } as Record<string, unknown>}
                 calculateMetadata={async () => {
                     const audioDuration = await getAudioDurationInSeconds(

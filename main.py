@@ -8,6 +8,7 @@ load_dotenv()  # Automatically reads .env file
 from audio_utils import isolate_vocals
 from transcribe_engine import transcribe_and_align
 from text_refinery import refine_lyrics_with_gemini, inject_lyrics_with_gemini
+from generate_background import generate_background_image, get_lyrics_text_from_json
 
 from pathlib import Path
 
@@ -29,6 +30,12 @@ def render_video(audio_path, lyrics_path, output_video_path):
     shutil.copy2(str(audio_path), str(public_dir / "audio.mp3"))
     shutil.copy2(str(lyrics_path), str(public_dir / "lyrics.json"))
     print(f"Assets copied to {public_dir}")
+
+    # Generate background image based on song content
+    song_name = Path(audio_path).stem
+    lyrics_text = get_lyrics_text_from_json(str(lyrics_path))
+    bg_image_path = str(public_dir / "background.jpg")
+    generate_background_image(song_name, lyrics_text, bg_image_path)
 
     # Ensure output directory exists and use absolute path
     output_video_path = Path(output_video_path).resolve()
