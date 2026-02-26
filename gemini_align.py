@@ -273,30 +273,28 @@ def full_pipeline_gemini(audio_path, ground_truth_text, api_key=None):
     ext = audio_path.suffix.lower()
     mime_type = {".mp3": "audio/mpeg", ".wav": "audio/wav", ".m4a": "audio/mp4"}.get(ext, "audio/mpeg")
     
-    prompt = f"""You are a professional lyric video timing tool.
+    prompt = f"""I have an audio file and its EXACT lyrics from a text file. Your ONLY job is:
+1. Add TIMESTAMPS (when each line is sung)
+2. Add PUNCTUATION (, ! ।) to the words
 
 AUDIO DURATION: {audio_duration:.1f} seconds
 
-DETECTED SPEECH REGIONS (singing ONLY in these windows):
+SPEECH REGIONS (singing happens ONLY here):
 {vad_info}
 
-GROUND TRUTH LYRICS (EXACT words, do NOT change):
+LYRICS (from text file — use these EXACT words, do NOT change/correct/modify ANY word):
 {clean_text}
 
-TASK — Map lyrics to speech regions:
-
-1. Each lyric line → one segment with start/end within speech regions above
-2. Chorus repeated 4 times → 4 separate segments with correct timing
-3. Word-level timestamps for each segment (within segment boundaries)
-4. Add punctuation to words: "," for pauses, "!" for exclamations (जय!, महादेव!, etc.), "।" for verse ends
-5. Silent gaps between speech → segment with empty text ""
-
-Return JSON array: {{"text": "...", "start": X.XX, "end": X.XX, "words": [{{"word": "...", "start": X.XX, "end": X.XX}}]}}
+OUTPUT FORMAT — JSON array:
+{{"text": "line with punctuation", "start": X.XX, "end": X.XX, "words": [{{"word": "word,", "start": X.XX, "end": X.XX}}]}}
 
 RULES:
-- ALL timestamps between 0 and {audio_duration:.1f}
-- Timestamps MUST align with speech regions above
-- EXACT ground truth words only
+- ONE line per segment
+- If chorus repeats 4 times in lyrics → 4 separate segments with timing
+- ALL timestamps between 0 and {audio_duration:.1f}, within speech regions
+- Add "," after natural pauses, "!" after exclamations/chants, "।" at verse ends
+- Include punctuation IN the word itself (e.g. "भोलेनाथ!," not "भोलेनाथ")
+- Silent gaps → segment with text ""
 - Return ONLY the JSON array"""
 
     models = ["gemini-2.5-flash", "gemini-2.0-flash"]
