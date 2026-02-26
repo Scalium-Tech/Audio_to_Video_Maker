@@ -237,18 +237,17 @@ def refine_lyrics_with_gemini(raw_segments, language="hi", api_key=None):
 You are an expert {language_name} lyricist. I will provide you with the EXACT timestamps when the singer is singing during each segment of a {language_name} song.
 
 YOUR TASK:
-1. Format each segment into a SINGLE poetic lyric block with **MAXIMUM 2 LINES** separated by `\n`.
+1. Format each segment into clean lyric lines. Prefer **ONE LINE per segment**. If two short lines belong together, use `\n` to separate them.
 2. Do NOT split the input segment into multiple JSON objects. Each input segment must result in exactly ONE output JSON object.
 3. The 'start' and 'end' of the output object MUST remain identical to the input segment's 'start' and 'end'.
 4. Correct {language_name} spelling mistakes. {script_note}.
 5. **NATIVE SCRIPT ONLY**: Output MUST be in the native script of the language (e.g., Devanagari for Hindi/Marathi). Do NOT transliterate to Latin/Roman script.
-6. **READABILITY**: Add commas (,), exclamation marks (!), and punctuation marks where natural pauses occur. Use "!" for exclamatory or devotional expressions (e.g., "जय शिव शंकर!", "हर हर महादेव!"). Use "।" (purna viram) at the end of sentences for Hindi/Marathi. This makes the lyrics more readable on screen.
-7. **MAX 2 LINES**: Each segment MUST have at most 2 lines. If the text is short enough, keep it as 1 line. Never exceed 2 lines.
-8. **DO NOT REMOVE REPETITIONS**: Even if a word or phrase is repeated, you MUST keep every occurrence. Every word the singer says is required for alignment.
+6. **ADD PUNCTUATION**: Add commas (,) at natural pauses within lines. Add "!" after devotional/exclamatory phrases (e.g., "जय!", "हर हर महादेव!", "ॐ नमः शिवाय!", "राधे राधे!", "जय श्री राम!", "गणपति बप्पा मोरया!"). Add "।" (purna viram) at the end of verses for Hindi/Marathi.
+7. **DO NOT REMOVE REPETITIONS**: Even if a word or phrase is repeated, you MUST keep every occurrence. Every word the singer says is required for alignment.
 
 CRITICAL RULES:
 - Exactly ONE JSON object per input segment.
-- Use `\n` for internal line breaks (max 1 line break = max 2 lines).
+- Use `\n` for internal line breaks.
 - Use `"text"` as the key for the lyric content (e.g., {{"start": 0.0, "end": 2.0, "text": "..."}}).
 - Return ONLY a JSON array.
 - Output in NATIVE SCRIPT, not Latin.
@@ -363,7 +362,7 @@ CRITICAL RULES — YOU MUST FOLLOW ALL OF THESE:
 5. If a timing segment is just intro music or noise, set its text to "".
 6. **ADD PUNCTUATION**: You MUST add these punctuation marks:
    - Add "," after natural pauses (e.g., "दया करो हे भोलेनाथ, शरण तिहारी आए हैं")
-   - Add "!" after devotional exclamations: "स्वामी!", "अंतर्यामी!", "आए हैं!", "शिव शंकर!", "जय शिव शंकर!", "हर हर महादेव!", "शिव शिव महादेव!"
+   - Add "!" after devotional exclamations and chants (e.g., "जय!", "हर हर महादेव!", "ॐ नमः शिवाय!", "राधे राधे!", "जय श्री राम!", "गणपति बप्पा मोरया!", "शिव शंकर!", "स्वामी!", "भोलेनाथ!"). Any word expressing devotion, praise, or exclamation should end with "!".
    - Add "।" at the end of complete verses
 7. Output a valid JSON array of objects with "start", "end", and "text" keys.
 8. RETURN ONLY THE JSON ARRAY, nothing else.
