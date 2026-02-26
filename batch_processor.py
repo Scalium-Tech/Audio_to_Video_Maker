@@ -85,7 +85,7 @@ def process_single_song(song_path_str, model_name="large-v2", skip_isolation=Fal
         # Execute pipeline
         pipeline.main(
             str(song_path),
-            language="auto",
+            language="hi",
             model_name=model_name,
             lyrics_text=None,
             ground_truth_text=ground_truth_text,

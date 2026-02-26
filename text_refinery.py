@@ -356,18 +356,21 @@ TASK:
 Map the GROUND TRUTH text to the TIMING SHELL timestamps.
 
 CRITICAL RULES — YOU MUST FOLLOW ALL OF THESE:
-1. **USE EXACT WORDS**: Copy the Ground Truth text EXACTLY as given. Do NOT correct spelling, do NOT change any words, do NOT use synonyms, do NOT add or remove any words.
-2. Preserve the 'start' and 'end' of each timing shell segment.
-3. If a timing segment is just intro music or noise with no matching lyrics, set its text to "".
-4. Distribute the Ground Truth lines across the timing segments based on where the singing occurs.
-5. **MAX 2 LINES per segment**: Use `\\n` to split lines, but never more than 1 line break per segment.
-6. You may ONLY add punctuation marks (commas, ! exclamation marks, । purna viram) — you must NOT change the actual words. Use "!" for exclamatory/devotional expressions (e.g., "जय शिव शंकर!", "हर हर महादेव!").
+1. **USE EXACT WORDS**: Copy the Ground Truth text EXACTLY as given. Do NOT correct spelling, do NOT change any words.
+2. **ONE LINE PER SEGMENT**: Each output segment should contain only 1 line of lyrics. If you need to fit multiple lines in one timing slot, use "\n" between them so they can be split later.
+3. **PRESERVE ALL REPETITIONS**: If the Ground Truth has a line repeated 4 times (e.g. chorus), you MUST output it 4 separate times. NEVER collapse 4 lines into 2. Split the timing segment evenly.
+4. Preserve the 'start' and 'end' timestamps. You may split a timing segment into multiple output segments to fit all lines.
+5. If a timing segment is just intro music or noise, set its text to "".
+6. **ADD PUNCTUATION**: You MUST add these punctuation marks:
+   - Add "," after natural pauses (e.g., "दया करो हे भोलेनाथ, शरण तिहारी आए हैं")
+   - Add "!" after devotional exclamations: "स्वामी!", "अंतर्यामी!", "आए हैं!", "शिव शंकर!", "जय शिव शंकर!", "हर हर महादेव!", "शिव शिव महादेव!"
+   - Add "।" at the end of complete verses
 7. Output a valid JSON array of objects with "start", "end", and "text" keys.
 8. RETURN ONLY THE JSON ARRAY, nothing else.
 
 EXAMPLE OF WHAT IS FORBIDDEN:
 - Ground truth says "सोहे" → You MUST use "सोहे", NOT "शोभे" or any other form
-- Ground truth says "गजानन" → You MUST use "गजानन", NOT "गजनन" or any variation
+- Ground truth has chorus 4 times → You MUST output 4 segments, NOT 2
 - Do NOT transliterate to Latin/Roman script
 """
 
