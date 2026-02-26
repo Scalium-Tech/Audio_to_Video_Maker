@@ -246,6 +246,7 @@ DO TWO THINGS for each segment:
 2. WORD TIMESTAMPS: For the FIRST occurrence of the text in each segment, provide word-level timestamps.
    - Word start/end MUST be within the segment's time boundaries
    - Words must be chronological
+   - IMPORTANT: Include ALL punctuation marks (commas, !, ।) as part of the word text. Copy words EXACTLY as they appear in the segment text above, including any trailing punctuation. For example, if the text says "भोलेनाथ!, शरण" then the word should be "भोलेनाथ!," not "भोलेनाथ".
 
 Return a JSON array where each element has:
 - "seg_index": segment number (0-based)
@@ -254,8 +255,8 @@ Return a JSON array where each element has:
 
 Example:
 [
-  {{"seg_index": 0, "repetitions": 1, "words": [{{"word": "hello", "start": 1.0, "end": 1.5}}]}},
-  {{"seg_index": 1, "repetitions": 4, "words": [{{"word": "chorus", "start": 5.0, "end": 5.5}}]}}
+  {{"seg_index": 0, "repetitions": 1, "words": [{{"word": "hello!", "start": 1.0, "end": 1.5}}]}},
+  {{"seg_index": 1, "repetitions": 4, "words": [{{"word": "chorus,", "start": 5.0, "end": 5.5}}]}}
 ]
 
 Return ONLY the JSON array:"""
