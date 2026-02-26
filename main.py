@@ -64,7 +64,7 @@ def render_video(audio_path, lyrics_path, output_video_path):
         return False
 
 
-def main(audio_path, language="hi", api_key=None, model_name="large-v2", lyrics_text=None, vocal_override_path=None, ground_truth_text=None):
+def main(audio_path, language="hi", api_key=None, model_name="large-v2", lyrics_text=None, vocal_override_path=None, ground_truth_text=None, skip_isolation=False):
     # Extract song name for folder creation
     audio_file = Path(audio_path)
     if not audio_file.exists():
@@ -80,7 +80,7 @@ def main(audio_path, language="hi", api_key=None, model_name="large-v2", lyrics_
 
     print(f"--- Output will be saved to: {song_output_dir} ---")
 
-    # 1. Isolate Vocals
+    # 1. Isolate Vocals (or skip if --skip-isolation)
     print(f"\n--- Step 1: Vocal Isolation ---")
     
     if vocal_override_path:
@@ -89,6 +89,9 @@ def main(audio_path, language="hi", api_key=None, model_name="large-v2", lyrics_
         if not Path(vocal_audio).exists():
              print(f"Error: Override file not found: {vocal_audio}")
              return
+    elif skip_isolation:
+        print(f"⚡ SKIPPING vocal isolation (using original MP3 directly)")
+        vocal_audio = str(audio_path)
     else:
         # Optimization: Skip if we already have the clean vocal file
         vocal_final_path = Path("separated") / f"{song_name}_vocal_clean.wav"

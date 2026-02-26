@@ -53,7 +53,7 @@ def _find_ground_truth(song_path):
     return None
 
 
-def process_single_song(song_path_str, model_name="large-v2"):
+def process_single_song(song_path_str, model_name="large-v2", skip_isolation=False):
     """Process a single song. Designed to run in a separate process."""
     # Import inside function to avoid multiprocessing issues
     from dotenv import load_dotenv
@@ -77,13 +77,19 @@ def process_single_song(song_path_str, model_name="large-v2"):
             except Exception as e:
                 print(f"  Warning: Could not read ground truth for {song_name}: {e}")
         
+        # Auto-skip isolation when ground truth is available
+        should_skip = skip_isolation or (ground_truth_text is not None)
+        if should_skip and not skip_isolation:
+            print(f"  ⚡ Auto-skipping vocal isolation (ground truth lyrics found)")
+        
         # Execute pipeline
         pipeline.main(
             str(song_path),
             language="auto",
             model_name=model_name,
             lyrics_text=None,
-            ground_truth_text=ground_truth_text
+            ground_truth_text=ground_truth_text,
+            skip_isolation=should_skip
         )
         
         duration = time.time() - start_time
@@ -97,7 +103,7 @@ def process_single_song(song_path_str, model_name="large-v2"):
         return {"song": song_name, "status": "failed", "error": error_msg, "duration": round(duration, 1)}
 
 
-def process_batch(model_name="large-v2", max_workers=3, retry_failed=True):
+def process_batch(model_name="large-v2", max_workers=3, retry_failed=True, skip_isolation=False):
     """
     Batch process all songs in input_songs/ with parallel workers.
     
@@ -151,7 +157,7 @@ def process_batch(model_name="large-v2", max_workers=3, retry_failed=True):
         return
     
     # Estimate time
-    est_per_song = 7  # minutes
+    est_per_song = 3 if skip_isolation else 7  # minutes
     est_sequential = remaining * est_per_song
     est_parallel = est_sequential / max_workers
     print(f"\nEstimated time: ~{est_parallel:.0f} min ({est_parallel/60:.1f} hours) with {max_workers} workers")
@@ -166,7 +172,7 @@ def process_batch(model_name="large-v2", max_workers=3, retry_failed=True):
         # Sequential mode — simpler, better for debugging
         for i, song_path in enumerate(to_process, 1):
             print(f"\n>>> [{i}/{remaining}] Processing: {song_path.name}")
-            result = process_single_song(str(song_path), model_name)
+            result = process_single_song(str(song_path), model_name, skip_isolation)
             
             if result["status"] == "success":
                 results["success"] += 1
@@ -188,7 +194,7 @@ def process_batch(model_name="large-v2", max_workers=3, retry_failed=True):
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             futures = {}
             for song_path in to_process:
-                future = executor.submit(process_single_song, str(song_path), model_name)
+                future = executor.submit(process_single_song, str(song_path), model_name, skip_isolation)
                 futures[future] = song_path.name
             
             for i, future in enumerate(as_completed(futures), 1):
@@ -248,10 +254,12 @@ if __name__ == "__main__":
     parser.add_argument("--model", default="large-v2", help="Whisper model (default: large-v2)")
     parser.add_argument("--workers", type=int, default=1, help="Parallel workers (default: 1, recommended: 3)")
     parser.add_argument("--no-retry", action="store_true", help="Don't retry previously failed songs")
+    parser.add_argument("--skip-isolation", action="store_true", help="Skip vocal isolation (use original MP3)")
     args = parser.parse_args()
     
     process_batch(
         model_name=args.model,
         max_workers=args.workers,
-        retry_failed=not args.no_retry
+        retry_failed=not args.no_retry,
+        skip_isolation=args.skip_isolation
     )
