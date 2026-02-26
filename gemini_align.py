@@ -261,20 +261,23 @@ def full_pipeline_gemini(audio_path, ground_truth_text, api_key=None):
         if not line or re.match(r'^\[.*\]$', line) or re.match(r'^\(.*\)$', line):
             continue
         clean_lines.append(line)
-    clean_text = "\n".join(clean_lines)
+    # Number each line so Gemini can't skip any
+    numbered_lines = [f"L{i+1}: {line}" for i, line in enumerate(clean_lines)]
+    numbered_text = "\n".join(numbered_lines)
+    total_lines = len(clean_lines)
     
     vad_info = "\n".join([f"  Speech: {s['start']:.1f}s - {s['end']:.1f}s" for s in speech_segments])
     
     # ── Step 3: Gemini with VAD hints ──
-    print("  Step 2: Gemini alignment with VAD hints...", flush=True)
+    print(f"  Step 2: Gemini alignment ({total_lines} lyric lines)...", flush=True)
     
     audio_bytes = audio_path.read_bytes()
     audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
     ext = audio_path.suffix.lower()
     mime_type = {".mp3": "audio/mpeg", ".wav": "audio/wav", ".m4a": "audio/mp4"}.get(ext, "audio/mpeg")
     
-    prompt = f"""I have an audio file and its EXACT lyrics from a text file. Your ONLY job is:
-1. Add TIMESTAMPS (when each line is sung)
+    prompt = f"""I have an audio file and {total_lines} lines of lyrics. Your job:
+1. Add TIMESTAMPS for EVERY line (when it is sung)
 2. Add PUNCTUATION (, ! ।) to the words
 
 AUDIO DURATION: {audio_duration:.1f} seconds
@@ -282,19 +285,19 @@ AUDIO DURATION: {audio_duration:.1f} seconds
 SPEECH REGIONS (singing happens ONLY here):
 {vad_info}
 
-LYRICS (from text file — use these EXACT words, do NOT change/correct/modify ANY word):
-{clean_text}
+LYRICS — there are exactly {total_lines} lines. You MUST output a segment for EVERY line:
+{numbered_text}
 
-OUTPUT FORMAT — JSON array:
+OUTPUT FORMAT — JSON array with exactly {total_lines} segments (plus silent gaps):
 {{"text": "line with punctuation", "start": X.XX, "end": X.XX, "words": [{{"word": "word,", "start": X.XX, "end": X.XX}}]}}
 
-RULES:
-- ONE line per segment
-- If chorus repeats 4 times in lyrics → 4 separate segments with timing
+CRITICAL:
+- You MUST output ALL {total_lines} lines. Do NOT skip any line.
+- L1 through L{total_lines} must ALL appear in your output.
+- ONE line per segment, in order
 - ALL timestamps between 0 and {audio_duration:.1f}, within speech regions
-- Add "," after natural pauses, "!" after exclamations/chants, "।" at verse ends
-- Include punctuation IN the word itself (e.g. "भोलेनाथ!," not "भोलेनाथ")
-- Silent gaps → segment with text ""
+- Add "," for pauses, "!" for exclamations/chants, "।" at verse ends
+- Include punctuation IN the word (e.g. "भोलेनाथ!," not "भोलेनाथ")
 - Return ONLY the JSON array"""
 
     models = ["gemini-2.5-flash", "gemini-2.0-flash"]
@@ -341,6 +344,12 @@ RULES:
                         continue
             
             if not isinstance(data, list) or len(data) == 0:
+                continue
+            
+            # Validate: must have at least 80% of expected lines
+            non_empty_count = sum(1 for item in data if item.get("text", "").strip())
+            if non_empty_count < total_lines * 0.8:
+                print(f"  {model_name}: Only {non_empty_count}/{total_lines} lines (need 80%). Trying next model...", flush=True)
                 continue
             
             # Clamp all timestamps to audio duration
