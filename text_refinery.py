@@ -3,18 +3,127 @@ import json
 
 # Language configuration for multi-language support
 LANGUAGE_CONFIG = {
-    "hi": {"name": "Hindi", "script_note": "Hindi → Latin (Roman) phonetics"},
-    "mr": {"name": "Marathi", "script_note": "Marathi → Latin (Roman) phonetics"},
-    "pa": {"name": "Punjabi", "script_note": "Punjabi → Latin (Roman) phonetics"},
-    "gu": {"name": "Gujarati", "script_note": "Gujarati → Latin (Roman) phonetics"},
+    "hi": {"name": "Hindi", "script_note": "Output MUST be in Devanagari (हिन्दी) script"},
+    "mr": {"name": "Marathi", "script_note": "Output MUST be in Devanagari (मराठी) script"},
+    "pa": {"name": "Punjabi", "script_note": "Output MUST be in Gurmukhi (ਪੰਜਾਬੀ) script"},
+    "gu": {"name": "Gujarati", "script_note": "Output MUST be in Gujarati (ગુજરાતી) script"},
     "en": {"name": "English", "script_note": "Ensure natural formatting and spelling"},
 }
 
+
+def _reattach_word_timestamps(refined_lyrics, raw_segments):
+    """
+    Re-attaches word-level timestamps from the original WhisperX segments
+    onto the Gemini-refined line-level lyrics by matching time ranges.
+    
+    For each refined line, finds all original words whose timestamps fall
+    within or overlap that line's [start, end] window.
+    """
+    # Collect ALL words from raw segments into a flat list
+    all_words = []
+    for seg in raw_segments:
+        for w in seg.get("words", []):
+            if "start" in w and "end" in w and "word" in w:
+                all_words.append({
+                    "word": w["word"],
+                    "start": round(w["start"], 2),
+                    "end": round(w["end"], 2),
+                })
+    
+    if not all_words:
+        return refined_lyrics  # No word data available, return as-is
+    
+    # Sort words by start time
+    all_words.sort(key=lambda w: w["start"])
+    
+    for line in refined_lyrics:
+        line_start = line.get("start", 0)
+        line_end = line.get("end", 0)
+        
+        # Find words that overlap with this line's time range
+        # A word overlaps if: word.start < line_end AND word.end > line_start
+        matched_words = [
+            w for w in all_words
+            if w["start"] < line_end and w["end"] > line_start
+        ]
+        
+        if matched_words:
+            line["words"] = matched_words
+    
+    # Sanitize word timestamps to fix unreasonable durations
+    return _sanitize_word_timestamps(refined_lyrics)
+
+
+def _sanitize_word_timestamps(lyrics):
+    """
+    Fixes unreasonable word timestamps:
+    1. Caps max word duration at 3 seconds
+    2. If words are bunched at the end of a segment (long initial gap),
+       redistributes them evenly across the segment.
+    3. Ensures words are sorted by start time within each segment.
+    """
+    MAX_WORD_DURATION = 3.0  # seconds
+    GAP_THRESHOLD_RATIO = 0.5  # if first word takes > 50% of segment, redistribute
+    
+    for line in lyrics:
+        words = line.get("words")
+        if not words or len(words) == 0:
+            continue
+        
+        line_start = line.get("start", 0)
+        line_end = line.get("end", 0)
+        segment_duration = line_end - line_start
+        
+        if segment_duration <= 0:
+            continue
+        
+        # Sort words by start time
+        words.sort(key=lambda w: w["start"])
+        
+        # Check if the first word has an unreasonably long duration
+        first_word = words[0]
+        first_word_duration = first_word["end"] - first_word["start"]
+        
+        if first_word_duration > MAX_WORD_DURATION and len(words) > 1:
+            # The first word is too long - likely a misalignment.
+            # Check if words are bunched at the end
+            second_word_start = words[1]["start"]
+            gap_before_second = second_word_start - line_start
+            
+            if gap_before_second > segment_duration * GAP_THRESHOLD_RATIO:
+                # Words are bunched at the end. Redistribute evenly.
+                actual_singing_start = second_word_start - 0.5  # Give a small lead-in
+                actual_singing_start = max(actual_singing_start, line_start)
+                total_singing_duration = line_end - actual_singing_start
+                word_slot = total_singing_duration / len(words)
+                
+                for i, w in enumerate(words):
+                    w["start"] = round(actual_singing_start + i * word_slot, 2)
+                    w["end"] = round(w["start"] + min(word_slot * 0.9, MAX_WORD_DURATION), 2)
+                    w["end"] = min(w["end"], line_end)
+                
+                print(f"  [SANITIZE] Redistributed {len(words)} words in segment {line_start:.1f}-{line_end:.1f}s (was bunched)", flush=True)
+                line["words"] = words
+                continue
+            else:
+                # Just cap the first word's duration
+                first_word["end"] = round(first_word["start"] + MAX_WORD_DURATION, 2)
+                print(f"  [SANITIZE] Capped word '{first_word['word']}' from {first_word_duration:.1f}s to {MAX_WORD_DURATION}s", flush=True)
+        
+        # Cap any remaining words that are too long
+        for w in words:
+            dur = w["end"] - w["start"]
+            if dur > MAX_WORD_DURATION:
+                w["end"] = round(w["start"] + MAX_WORD_DURATION, 2)
+        
+        line["words"] = words
+    
+    return lyrics
+
 def refine_lyrics_with_gemini(raw_segments, language="hi", api_key=None):
     """
-    Uses Google Gemini 2.5 Pro to correct lyrics, transliterate to Latin script,
-    and group into poetic lines using WORD-LEVEL timestamps for precision.
-    Supports multiple languages via language code (hi, mr, etc.).
+    Uses Google Gemini to correct lyrics in native script (Devanagari for Hindi/Marathi),
+    add punctuation for readability, and group into max 2 poetic lines per segment.
     """
     lang_cfg = LANGUAGE_CONFIG.get(language, {"name": language.upper(), "script_note": f"{language} → Latin (Roman) phonetics"})
     language_name = lang_cfg["name"]
@@ -66,20 +175,21 @@ def refine_lyrics_with_gemini(raw_segments, language="hi", api_key=None):
 You are an expert {language_name} lyricist. I will provide you with the EXACT timestamps when the singer is singing during each segment of a {language_name} song.
 
 YOUR TASK:
-1. Format each segment into a SINGLE poetic lyric block. One block should contain 2-4 lines separated by `\n`.
+1. Format each segment into a SINGLE poetic lyric block with **MAXIMUM 2 LINES** separated by `\n`.
 2. Do NOT split the input segment into multiple JSON objects. Each input segment must result in exactly ONE output JSON object.
 3. The 'start' and 'end' of the output object MUST remain identical to the input segment's 'start' and 'end'.
-4. Correct {language_name} spelling mistakes and ensure standard Latin transliteration ({script_note}).
-5. Output MUST be in **PLAIN Latin Script** (transliteration).
-6. **NO DIACRITICAL MARKS**: Use ONLY plain English letters (a-z).
-7. **IMPORTANT**: Return each segment as a single block that stays on screen for the whole duration provided. Use line breaks (`\n`) to format it naturally like a paragraph in a lyric video.
-8. **DO NOT REMOVE REPETITIONS**: Even if a word or phrase is repeated (e.g., "vato mithi mithi vato"), you MUST keep every occurrence. Every word the singer says is required for alignment.
+4. Correct {language_name} spelling mistakes. {script_note}.
+5. **NATIVE SCRIPT ONLY**: Output MUST be in the native script of the language (e.g., Devanagari for Hindi/Marathi). Do NOT transliterate to Latin/Roman script.
+6. **READABILITY**: Add commas (,) and punctuation marks where natural pauses occur. Use "।" (purna viram) at the end of sentences for Hindi/Marathi. This makes the lyrics more readable on screen.
+7. **MAX 2 LINES**: Each segment MUST have at most 2 lines. If the text is short enough, keep it as 1 line. Never exceed 2 lines.
+8. **DO NOT REMOVE REPETITIONS**: Even if a word or phrase is repeated, you MUST keep every occurrence. Every word the singer says is required for alignment.
 
 CRITICAL RULES:
 - Exactly ONE JSON object per input segment.
-- Use `\n` for internal line breaks.
+- Use `\n` for internal line breaks (max 1 line break = max 2 lines).
 - Use `"text"` as the key for the lyric content (e.g., {{"start": 0.0, "end": 2.0, "text": "..."}}).
 - Return ONLY a JSON array.
+- Output in NATIVE SCRIPT, not Latin.
 
 Segment-Level Input Data:
 {json.dumps(segment_data, ensure_ascii=False)}
@@ -138,7 +248,9 @@ Segment-Level Input Data:
                 if start_idx != -1 and end_idx != 0:
                     json_str = text_response[start_idx:end_idx]
                     refined_lyrics = json.loads(json_str)
-                    print(f"SUCCESS: Refined lyrics generated using {model_name}", flush=True)
+                    # Re-attach word-level timestamps from the original segments
+                    refined_lyrics = _reattach_word_timestamps(refined_lyrics, raw_segments)
+                    print(f"SUCCESS: Refined lyrics generated using {model_name} (with word timestamps)", flush=True)
                     return refined_lyrics
                 else:
                     print(f"Failed to parse JSON from {model_name}", flush=True)
@@ -171,21 +283,29 @@ def inject_lyrics_with_gemini(timing_shell, ground_truth, language="hi", api_key
 You are a professional lyric video editor. 
 I have a 'Timing Shell' (AI-heard segments with timestamps) and 'Ground Truth Lyrics' (the correct text).
 
-GROUND TRUTH (The correct lyrics to use):
+GROUND TRUTH (USE THESE EXACT WORDS — DO NOT CHANGE ANYTHING):
 {ground_truth}
 
 TIMING SHELL (AI interpreted segments with word-level evidence):
 {json.dumps(timing_shell, indent=2, ensure_ascii=False)}
 
 TASK:
-Map the GROUND TRUTH text to the TIMING SHELL timestamps. 
-1. Preserve the 'start' and 'end' of each segment. 
-2. If the AI "heard" a segment that is just intro music or noises (like "पूरा" or dots), map it to an empty string "" if it doesn't match the start of your lyrics.
-3. Distribute the Ground Truth lines across the AI segments where they fit best based on the timestamps.
-4. If a segment is very long, feel free to use `\n` to split the ground truth text into multiple lines within that segment.
-5. Ensure the output is a valid JSON array of objects with "start", "end", and "text".
-6. The text MUST be the exact ground truth {language_name} text in Latin script.
-7. Total accuracy is required. RETURN ONLY THE JSON ARRAY.
+Map the GROUND TRUTH text to the TIMING SHELL timestamps.
+
+CRITICAL RULES — YOU MUST FOLLOW ALL OF THESE:
+1. **USE EXACT WORDS**: Copy the Ground Truth text EXACTLY as given. Do NOT correct spelling, do NOT change any words, do NOT use synonyms, do NOT add or remove any words.
+2. Preserve the 'start' and 'end' of each timing shell segment.
+3. If a timing segment is just intro music or noise with no matching lyrics, set its text to "".
+4. Distribute the Ground Truth lines across the timing segments based on where the singing occurs.
+5. **MAX 2 LINES per segment**: Use `\\n` to split lines, but never more than 1 line break per segment.
+6. You may ONLY add punctuation marks (commas, । purna viram) — you must NOT change the actual words.
+7. Output a valid JSON array of objects with "start", "end", and "text" keys.
+8. RETURN ONLY THE JSON ARRAY, nothing else.
+
+EXAMPLE OF WHAT IS FORBIDDEN:
+- Ground truth says "सोहे" → You MUST use "सोहे", NOT "शोभे" or any other form
+- Ground truth says "गजानन" → You MUST use "गजानन", NOT "गजनन" or any variation
+- Do NOT transliterate to Latin/Roman script
 """
 
     models_to_try = ["gemini-2.5-flash", "gemini-1.5-pro-002", "gemini-1.5-flash"]
@@ -214,7 +334,10 @@ Map the GROUND TRUTH text to the TIMING SHELL timestamps.
                 start_idx = text_response.find('[')
                 end_idx = text_response.rfind(']') + 1
                 if start_idx != -1 and end_idx != 0:
-                    return json.loads(text_response[start_idx:end_idx])
+                    injected_lyrics = json.loads(text_response[start_idx:end_idx])
+                    # Re-attach word-level timestamps from the timing shell
+                    injected_lyrics = _reattach_word_timestamps(injected_lyrics, timing_shell)
+                    return injected_lyrics
             else:
                 print(f"Model {model_name} failed: {response.status_code}")
         except Exception as e:

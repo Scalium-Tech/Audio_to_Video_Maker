@@ -1,0 +1,59 @@
+#!/bin/bash
+# ============================================================
+#  LyricFlow — One-Command Pipeline Launcher
+#  Usage: ./start
+#
+#  1. Drop MP3 files into input_songs/
+#  2. Drop matching .txt files into ground_truth_lyrics/ (optional)
+#  3. Run: ./start
+# ============================================================
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+echo ""
+echo "╔══════════════════════════════════════════════════════╗"
+echo "║         🎵 LyricFlow Pipeline — Starting...        ║"
+echo "╚══════════════════════════════════════════════════════╝"
+echo ""
+
+# Ensure venv exists
+if [ ! -d "venv" ]; then
+    echo "⚠️  Python venv not found. Creating one with Python 3.11..."
+    python3.11 -m venv venv
+    source venv/bin/activate
+    pip install --upgrade pip
+    pip install -r requirements.txt
+else
+    source venv/bin/activate
+fi
+
+# Check input folder
+if [ ! -d "input_songs" ]; then
+    mkdir -p input_songs
+    echo "📁 Created input_songs/ folder. Drop your MP3 files there!"
+    exit 0
+fi
+
+MP3_COUNT=$(find input_songs -name "*.mp3" | wc -l | tr -d ' ')
+if [ "$MP3_COUNT" = "0" ]; then
+    echo "❌ No MP3 files found in input_songs/"
+    echo "   Drop your MP3 files there and run ./start again."
+    exit 1
+fi
+
+echo "🎵 Found $MP3_COUNT MP3 file(s) to process"
+echo ""
+
+# Ensure ground truth lyrics folder exists
+mkdir -p ground_truth_lyrics
+
+# Run the batch processor
+python batch_processor.py "$@"
+
+echo ""
+echo "╔══════════════════════════════════════════════════════╗"
+echo "║         ✅ All done! Check output_song/ folder      ║"
+echo "╚══════════════════════════════════════════════════════╝"

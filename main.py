@@ -36,7 +36,7 @@ def render_video(audio_path, lyrics_path, output_video_path):
 
     # Render the video using Remotion CLI
     # shell=True is required on Windows for npx to work in subprocess
-    render_cmd = f'npx remotion render LyricVideo "{output_video_path}"'
+    render_cmd = f'npx remotion render LyricVideo "{output_video_path}" --concurrency=100% --log=error'
 
     print(f"Rendering video... (this may take a few minutes)")
     try:

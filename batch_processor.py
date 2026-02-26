@@ -3,6 +3,7 @@ import time
 from pathlib import Path
 import argparse
 import main as pipeline
+from lyrics_extractor import extract_lyrics_from_text
 
 # Configuration
 INPUT_FOLDER = Path("input_songs")
@@ -12,6 +13,7 @@ def process_batch(model_name="large-v2"):
     """
     Scans the input_songs folder for MP3 files and processes them one by one.
     Automatically uses ground_truth_lyrics if available for Post-Alignment Injection.
+    Lyrics are auto-extracted from Suno AI export files or any messy txt files.
     """
     print(f"\n{'='*60}")
     print(f"       BATCH PROCESSOR: STARTING BATCH RUN (Model: {model_name})")
@@ -45,12 +47,31 @@ def process_batch(model_name="large-v2"):
             ground_truth_text = None
             
             # Check for GROUND TRUTH LYRICS file
-            txt_path = GROUND_TRUTH_FOLDER / (song_path.stem + ".txt")
-            if txt_path.exists():
+            # Support both patterns: "songname.txt" and "songname.mp3.txt"
+            txt_candidates = [
+                GROUND_TRUTH_FOLDER / (song_path.stem + ".txt"),       # songname.txt
+                GROUND_TRUTH_FOLDER / (song_path.name + ".txt"),       # songname.mp3.txt
+            ]
+            # Also check for any txt file that contains the song name
+            for txt_file in GROUND_TRUTH_FOLDER.glob("*.txt"):
+                if song_path.stem in txt_file.name and txt_file not in txt_candidates:
+                    txt_candidates.append(txt_file)
+            
+            txt_path = None
+            for candidate in txt_candidates:
+                if candidate.exists():
+                    txt_path = candidate
+                    break
+            
+            if txt_path:
                 print(f"--- FOUND GROUND TRUTH LYRICS: {txt_path.name} ---")
                 try:
                     with open(txt_path, "r", encoding="utf-8") as f:
-                        ground_truth_text = f.read()
+                        raw_text = f.read()
+                    # Auto-extract clean Devanagari lyrics from the raw file
+                    ground_truth_text = extract_lyrics_from_text(raw_text)
+                    lyric_lines = len(ground_truth_text.splitlines()) if ground_truth_text else 0
+                    print(f"--- Extracted {lyric_lines} clean lyric lines from txt file ---")
                     print(f"--- Triggering Post-Alignment Injection Protocol ---")
                 except Exception as e:
                     print(f"Warning: Could not read ground truth file: {e}")

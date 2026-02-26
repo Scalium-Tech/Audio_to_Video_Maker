@@ -49,3 +49,4 @@ hybrid_injector.py
 # Input Media (Usually local only)
 input_songs/
 ground_truth_lyrics/
+venv/
