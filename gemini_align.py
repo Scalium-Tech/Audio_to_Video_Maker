@@ -200,16 +200,12 @@ Return ONLY the JSON array:"""
 
 def full_pipeline_gemini(audio_path, ground_truth_text, api_key=None):
     """
-    FAST PATH: Replaces WhisperX + Injection + Align in ONE Gemini call.
+    FAST PATH: VAD (10s) + Gemini (1.5min) = ~2 min total.
     
-    Sends audio + ground truth lyrics to Gemini and gets back:
-    - Segment timing (when each line is sung)
-    - Chorus repetition detection
-    - Word-level timestamps with punctuation
-    
-    Saves ~2 min per song by skipping WhisperX entirely.
+    1. Pyannote VAD detects exactly when singing/speech occurs
+    2. Gemini maps ground truth text to those speech regions with word timestamps
     """
-    import requests
+    import requests, re, time
     
     api_key = api_key or os.environ.get("GEMINI_API_KEY")
     if not api_key:
@@ -221,15 +217,43 @@ def full_pipeline_gemini(audio_path, ground_truth_text, api_key=None):
         print(f"  WARNING: Audio file not found: {audio_path}")
         return None
     
-    audio_bytes = audio_path.read_bytes()
-    audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+    # ── Step 1: Pyannote VAD ──
+    print("  Step 1: Voice Activity Detection...", flush=True)
+    vad_start = time.time()
     
-    ext = audio_path.suffix.lower()
-    mime_map = {".mp3": "audio/mpeg", ".wav": "audio/wav", ".m4a": "audio/mp4"}
-    mime_type = mime_map.get(ext, "audio/mpeg")
+    try:
+        import torch, whisperx
+        audio_np = whisperx.load_audio(str(audio_path))
+        sample_rate = 16000
+        audio_duration = round(len(audio_np) / sample_rate, 2)
+        print(f"  Audio duration: {audio_duration:.1f}s", flush=True)
+        
+        from pyannote.audio import Model
+        from pyannote.audio.pipelines import VoiceActivityDetection
+        
+        vad_model = Model.from_pretrained("pyannote/segmentation", use_auth_token=False)
+        vad_pipeline = VoiceActivityDetection(segmentation=vad_model)
+        vad_pipeline.instantiate({"min_duration_on": 0.3, "min_duration_off": 0.3})
+        
+        audio_tensor = torch.from_numpy(audio_np).unsqueeze(0)
+        vad_result = vad_pipeline({"waveform": audio_tensor, "sample_rate": sample_rate})
+        
+        speech_segments = []
+        for seg in vad_result.get_timeline().support():
+            speech_segments.append({"start": round(seg.start, 2), "end": round(seg.end, 2)})
+        
+        print(f"  VAD: {len(speech_segments)} speech regions in {time.time()-vad_start:.1f}s", flush=True)
+        
+    except Exception as e:
+        print(f"  VAD failed: {e}. Using duration only.", flush=True)
+        try:
+            from mutagen.mp3 import MP3
+            audio_duration = round(MP3(str(audio_path)).info.length, 2)
+        except Exception:
+            audio_duration = 210.0
+        speech_segments = [{"start": 0.0, "end": audio_duration}]
     
-    # Clean ground truth — remove section headers like [Verse 1], [Chorus]
-    import re
+    # ── Step 2: Clean ground truth ──
     clean_lines = []
     for line in ground_truth_text.strip().split("\n"):
         line = line.strip()
@@ -238,44 +262,46 @@ def full_pipeline_gemini(audio_path, ground_truth_text, api_key=None):
         clean_lines.append(line)
     clean_text = "\n".join(clean_lines)
     
-    prompt = f"""You are a professional lyric video timing tool. I'm giving you an audio file and the EXACT lyrics.
+    vad_info = "\n".join([f"  Speech: {s['start']:.1f}s - {s['end']:.1f}s" for s in speech_segments])
+    
+    # ── Step 3: Gemini with VAD hints ──
+    print("  Step 2: Gemini alignment with VAD hints...", flush=True)
+    
+    audio_bytes = audio_path.read_bytes()
+    audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+    ext = audio_path.suffix.lower()
+    mime_type = {".mp3": "audio/mpeg", ".wav": "audio/wav", ".m4a": "audio/mp4"}.get(ext, "audio/mpeg")
+    
+    prompt = f"""You are a professional lyric video timing tool.
 
-GROUND TRUTH LYRICS (use these EXACT words, do NOT change anything):
+AUDIO DURATION: {audio_duration:.1f} seconds
+
+DETECTED SPEECH REGIONS (singing ONLY in these windows):
+{vad_info}
+
+GROUND TRUTH LYRICS (EXACT words, do NOT change):
 {clean_text}
 
-YOUR TASK — Listen to the audio and do ALL of the following:
+TASK — Map lyrics to speech regions:
 
-1. **SEGMENT TIMING**: Determine when each line is sung. Each line from the lyrics should become one segment with start/end timestamps in seconds.
+1. Each lyric line → one segment with start/end within speech regions above
+2. Chorus repeated 4 times → 4 separate segments with correct timing
+3. Word-level timestamps for each segment (within segment boundaries)
+4. Add punctuation to words: "," for pauses, "!" for exclamations (जय!, महादेव!, etc.), "।" for verse ends
+5. Silent gaps between speech → segment with empty text ""
 
-2. **CHORUS REPETITIONS**: If a line is repeated multiple times consecutively (chorus/refrain), output it as separate segments with their own timing, one for each repetition.
-
-3. **WORD TIMESTAMPS**: For each segment, provide word-level start/end timestamps.
-
-4. **PUNCTUATION**: Add these to the word text:
-   - "," after natural pauses within a line
-   - "!" after devotional exclamations and chants (e.g., जय!, महादेव!, शंकर!, राम!, etc.)
-   - "।" at end of complete verses
-   Include the punctuation as part of the word itself (e.g., "भोलेनाथ!," not "भोलेनाथ").
-
-5. **SILENT SECTIONS**: If there's instrumental/intro/outro with no singing, output a segment with empty text "".
-
-Return a JSON array where each element is:
-{{"text": "full line text with punctuation", "start": X.XX, "end": X.XX, "words": [{{"word": "...", "start": X.XX, "end": X.XX}}, ...]}}
+Return JSON array: {{"text": "...", "start": X.XX, "end": X.XX, "words": [{{"word": "...", "start": X.XX, "end": X.XX}}]}}
 
 RULES:
-- Use EXACT words from ground truth — NO corrections, NO synonyms
-- Timestamps must be in seconds with 2 decimal places
-- Words must be chronological within each segment
-- Every line from the lyrics MUST appear at least once
-- If a chorus appears 4 times in the lyrics, output 4 segments
-
-Return ONLY the JSON array:"""
+- ALL timestamps between 0 and {audio_duration:.1f}
+- Timestamps MUST align with speech regions above
+- EXACT ground truth words only
+- Return ONLY the JSON array"""
 
     models = ["gemini-2.5-flash", "gemini-2.0-flash"]
     
     for model_name in models:
-        print(f"  Full pipeline with {model_name}...", flush=True)
-        
+        print(f"  Trying {model_name}...", flush=True)
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
         
         payload = {
@@ -283,17 +309,13 @@ Return ONLY the JSON array:"""
                 {"inlineData": {"mimeType": mime_type, "data": audio_b64}},
                 {"text": prompt}
             ]}],
-            "generationConfig": {
-                "temperature": 0.1,
-                "maxOutputTokens": 65536,
-            }
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 65536}
         }
         
         try:
             response = requests.post(url, json=payload, timeout=300)
-            
             if response.status_code != 200:
-                print(f"  {model_name} failed: HTTP {response.status_code}", flush=True)
+                print(f"  {model_name}: HTTP {response.status_code}", flush=True)
                 continue
             
             result = response.json()
@@ -302,7 +324,6 @@ Return ONLY the JSON array:"""
             text_response = all_texts[-1] if all_texts else ""
             
             if not text_response:
-                print(f"  {model_name}: No text in response", flush=True)
                 continue
             
             # Parse JSON
@@ -313,49 +334,38 @@ Return ONLY the JSON array:"""
                 try:
                     data = json.loads(stripped)
                 except json.JSONDecodeError:
-                    idx_s = stripped.find("[")
-                    idx_e = stripped.rfind("]")
-                    if idx_s >= 0 and idx_e > idx_s:
-                        data = json.loads(stripped[idx_s:idx_e+1])
+                    s, e = stripped.find("["), stripped.rfind("]")
+                    if s >= 0 and e > s:
+                        data = json.loads(stripped[s:e+1])
                     else:
                         print(f"  {model_name}: No JSON found", flush=True)
                         continue
             
             if not isinstance(data, list) or len(data) == 0:
-                print(f"  {model_name}: Empty response", flush=True)
                 continue
             
-            # Clean up — ensure all segments have required fields
+            # Clamp all timestamps to audio duration
             segments = []
             for item in data:
                 text = item.get("text", "")
-                start = item.get("start", 0)
-                end = item.get("end", 0)
+                start = min(max(item.get("start", 0), 0), audio_duration)
+                end = min(max(item.get("end", start + 0.1), start + 0.1), audio_duration)
                 words = item.get("words", [])
                 
-                # Clamp word timestamps
                 for w in words:
-                    w["start"] = max(start, min(w.get("start", start), end))
-                    w["end"] = max(w["start"] + 0.05, min(w.get("end", end), end))
+                    w["start"] = round(max(start, min(w.get("start", start), end)), 2)
+                    w["end"] = round(max(w["start"] + 0.05, min(w.get("end", end), end)), 2)
                     if w["end"] - w["start"] > 1.5:
                         w["end"] = round(w["start"] + 1.5, 2)
-                    w["start"] = round(w["start"], 2)
-                    w["end"] = round(w["end"], 2)
                 
-                segments.append({
-                    "text": text,
-                    "start": round(start, 2),
-                    "end": round(end, 2),
-                    "words": words
-                })
+                segments.append({"text": text, "start": round(start, 2), "end": round(end, 2), "words": words})
             
-            # Transfer punctuation as safety net
             segments = _transfer_punctuation(segments)
             
-            # Stats
             non_empty = [s for s in segments if s["text"].strip()]
-            chorus_count = sum(1 for s in segments if "दया" in s.get("text", "") or "राम" in s.get("text", "") or "हर" in s.get("text", ""))
+            max_ts = max(s["end"] for s in segments) if segments else 0
             print(f"  SUCCESS: {len(segments)} segments ({len(non_empty)} with lyrics)", flush=True)
+            print(f"  Max timestamp: {max_ts:.1f}s (audio: {audio_duration:.1f}s)", flush=True)
             
             for seg in segments[:3]:
                 if seg["text"]:
