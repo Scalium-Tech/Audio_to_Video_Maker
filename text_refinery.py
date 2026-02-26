@@ -242,7 +242,7 @@ YOUR TASK:
 3. The 'start' and 'end' of the output object MUST remain identical to the input segment's 'start' and 'end'.
 4. Correct {language_name} spelling mistakes. {script_note}.
 5. **NATIVE SCRIPT ONLY**: Output MUST be in the native script of the language (e.g., Devanagari for Hindi/Marathi). Do NOT transliterate to Latin/Roman script.
-6. **READABILITY**: Add commas (,) and punctuation marks where natural pauses occur. Use "।" (purna viram) at the end of sentences for Hindi/Marathi. This makes the lyrics more readable on screen.
+6. **READABILITY**: Add commas (,), exclamation marks (!), and punctuation marks where natural pauses occur. Use "!" for exclamatory or devotional expressions (e.g., "जय शिव शंकर!", "हर हर महादेव!"). Use "।" (purna viram) at the end of sentences for Hindi/Marathi. This makes the lyrics more readable on screen.
 7. **MAX 2 LINES**: Each segment MUST have at most 2 lines. If the text is short enough, keep it as 1 line. Never exceed 2 lines.
 8. **DO NOT REMOVE REPETITIONS**: Even if a word or phrase is repeated, you MUST keep every occurrence. Every word the singer says is required for alignment.
 
@@ -361,7 +361,7 @@ CRITICAL RULES — YOU MUST FOLLOW ALL OF THESE:
 3. If a timing segment is just intro music or noise with no matching lyrics, set its text to "".
 4. Distribute the Ground Truth lines across the timing segments based on where the singing occurs.
 5. **MAX 2 LINES per segment**: Use `\\n` to split lines, but never more than 1 line break per segment.
-6. You may ONLY add punctuation marks (commas, । purna viram) — you must NOT change the actual words.
+6. You may ONLY add punctuation marks (commas, ! exclamation marks, । purna viram) — you must NOT change the actual words. Use "!" for exclamatory/devotional expressions (e.g., "जय शिव शंकर!", "हर हर महादेव!").
 7. Output a valid JSON array of objects with "start", "end", and "text" keys.
 8. RETURN ONLY THE JSON ARRAY, nothing else.
 

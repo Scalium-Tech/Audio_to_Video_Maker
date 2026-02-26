@@ -100,7 +100,6 @@ Return ONLY the JSON array:"""
             "generationConfig": {
                 "temperature": 0.1,
                 "maxOutputTokens": 65536,
-                "responseMimeType": "application/json",
             }
         }
         
@@ -112,7 +111,15 @@ Return ONLY the JSON array:"""
                 continue
             
             result = response.json()
-            text_response = result["candidates"][0]["content"]["parts"][0]["text"]
+            
+            # Gemini 2.5 Flash may return multiple parts (thinking + text)
+            parts = result["candidates"][0]["content"]["parts"]
+            text_response = ""
+            for part in parts:
+                if "text" in part:
+                    text_response = part["text"]
+                    if "[" in text_response and "]" in text_response:
+                        break
             
             # Parse JSON from response — strip markdown code blocks if present
             clean = text_response.strip()
@@ -260,7 +267,6 @@ Return ONLY the JSON array:"""
         "generationConfig": {
             "temperature": 0.1,
             "maxOutputTokens": 4096,
-            "responseMimeType": "application/json",
         }
     }
     
@@ -274,20 +280,40 @@ Return ONLY the JSON array:"""
             return lyrics_segments
         
         result = response.json()
-        text_response = result["candidates"][0]["content"]["parts"][0]["text"]
         
-        # Parse JSON
-        clean = text_response.strip()
-        clean = re.sub(r'^```(?:json)?\s*', '', clean)
-        clean = re.sub(r'\s*```$', '', clean)
-        start_idx = clean.find("[")
-        end_idx = clean.rfind("]") + 1
+        # Collect ALL text from all parts
+        parts = result["candidates"][0]["content"]["parts"]
+        all_texts = [p["text"] for p in parts if "text" in p]
+        # Use the last text part (thinking block is usually first)
+        text_response = all_texts[-1] if all_texts else ""
         
-        if start_idx == -1 or end_idx == 0:
-            print("  No JSON found in response", flush=True)
+        if not text_response:
+            print(f"  No text found in response (parts: {len(parts)})", flush=True)
             return lyrics_segments
         
-        rep_data = json.loads(clean[start_idx:end_idx])
+        # Extract JSON array — handle ```json ... ``` wrapping
+        try:
+            # Try direct JSON parse first
+            rep_data = json.loads(text_response.strip())
+        except json.JSONDecodeError:
+            # Strip code fences and find JSON array
+            stripped = text_response.replace("```json", "").replace("```", "").strip()
+            try:
+                rep_data = json.loads(stripped)
+            except json.JSONDecodeError:
+                # Last resort: find [ and ] and extract
+                idx_start = stripped.find("[")
+                idx_end = stripped.rfind("]")
+                if idx_start >= 0 and idx_end > idx_start:
+                    try:
+                        rep_data = json.loads(stripped[idx_start:idx_end+1])
+                    except json.JSONDecodeError as e:
+                        print(f"  JSON parse failed: {e}", flush=True)
+                        print(f"  Text preview: {stripped[:200]}", flush=True)
+                        return lyrics_segments
+                else:
+                    print(f"  No JSON array found in response", flush=True)
+                    return lyrics_segments
         
         # Build repetition map
         rep_map = {}

@@ -321,17 +321,19 @@ const LyricDisplay: React.FC<{
                 }
 
                 return (
-                    <span
-                        key={`w-${idx}`}
-                        style={{
-                            color,
-                            textShadow,
-                            display: "inline-block",
-                            marginRight: "0.4em",
-                        }}
-                    >
-                        {w.word}{" "}
-                    </span>
+                    <React.Fragment key={`w-${idx}`}>
+                        <span
+                            style={{
+                                color,
+                                textShadow,
+                                display: "inline-block",
+                                marginRight: "0.4em",
+                            }}
+                        >
+                            {w.word}{" "}
+                        </span>
+                        {(w.word.endsWith(",") || w.word.endsWith("!") || w.word.endsWith("।")) && <br />}
+                    </React.Fragment>
                 );
             })}
         </div>
