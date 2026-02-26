@@ -364,6 +364,8 @@ Return ONLY the JSON array:"""
                 print(f"    [{seg['start']:.1f}-{seg['end']:.1f}s] {seg['text'][:40]}...")
                 for w in seg.get("words", [])[:3]:
                     print(f"      {w['start']:.2f}-{w['end']:.2f}: \"{w['word']}\"")
+            # Transfer punctuation from segment text to words
+            expanded = _transfer_punctuation(expanded)
             
             return expanded
             
@@ -390,8 +392,10 @@ def _clamp_words(gemini_words, seg_start, seg_end):
 
 
 def _even_words(text, start, end):
-    """Create evenly distributed word timestamps."""
-    text_words = text.replace(",", " ").replace("।", " ").replace("!", " ").split()
+    """Create evenly distributed word timestamps, preserving punctuation."""
+    # Split but keep punctuation attached to words
+    import re
+    text_words = re.findall(r'\S+', text)
     text_words = [w.strip() for w in text_words if w.strip()]
     n = max(len(text_words), 1)
     dur = end - start
@@ -399,6 +403,42 @@ def _even_words(text, start, end):
     return [{"word": tw, "start": round(start + j * slot, 2),
              "end": round(start + (j + 1) * slot - 0.03, 2)}
             for j, tw in enumerate(text_words)]
+
+
+def _transfer_punctuation(segments):
+    """
+    Transfer punctuation from segment 'text' to individual 'words'.
+    
+    Problem: Gemini returns words like ['भोलेनाथ', 'शरण'] 
+    but text has 'भोलेनाथ!, शरण तिहारी आए हैं।'
+    
+    Solution: Match each word to the text and copy trailing punctuation.
+    """
+    for seg in segments:
+        text = seg.get("text", "")
+        words = seg.get("words", [])
+        if not text or not words:
+            continue
+        
+        # Split text into tokens preserving punctuation
+        import re
+        text_tokens = re.findall(r'\S+', text)
+        
+        # Match words to text tokens
+        ti = 0  # text token index
+        for w in words:
+            clean_word = w["word"].rstrip(",!।.?")
+            # Find matching text token
+            while ti < len(text_tokens):
+                clean_token = text_tokens[ti].rstrip(",!।.?")
+                if clean_token == clean_word:
+                    # Transfer the full token (with punctuation) to the word
+                    w["word"] = text_tokens[ti]
+                    ti += 1
+                    break
+                ti += 1
+    
+    return segments
 
 
 def detect_chorus_repetitions(audio_path, lyrics_segments, api_key=None):

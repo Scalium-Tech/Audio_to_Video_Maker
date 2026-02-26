@@ -299,7 +299,7 @@ const LyricDisplay: React.FC<{
                 maxWidth: "85%",
                 lineHeight: 1.6,
                 letterSpacing: 1,
-                maxHeight: Math.round(FONT_SIZE * 1.6 * 2),
+                maxHeight: Math.round(FONT_SIZE * 1.6 * 3),
                 overflow: "hidden" as const,
             }}
         >
@@ -320,6 +320,11 @@ const LyricDisplay: React.FC<{
 
                 }
 
+                // Line break after punctuation OR at midpoint for long lines
+                const hasPunctBreak = w.word.endsWith(",") || w.word.endsWith("!") || w.word.endsWith("।");
+                const midpoint = Math.floor(displayWords.length / 2);
+                const isMidBreak = !hasPunctBreak && displayWords.length >= 6 && idx === midpoint - 1;
+
                 return (
                     <React.Fragment key={`w-${idx}`}>
                         <span
@@ -332,7 +337,7 @@ const LyricDisplay: React.FC<{
                         >
                             {w.word}{" "}
                         </span>
-                        {(w.word.endsWith(",") || w.word.endsWith("!") || w.word.endsWith("।")) && <br />}
+                        {(hasPunctBreak || isMidBreak) && <br />}
                     </React.Fragment>
                 );
             })}
