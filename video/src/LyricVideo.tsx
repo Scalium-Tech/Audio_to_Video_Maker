@@ -320,10 +320,8 @@ const LyricDisplay: React.FC<{
 
                 }
 
-                // Line break after punctuation OR at midpoint for long lines
-                const hasPunctBreak = w.word.endsWith(",") || w.word.endsWith("!") || w.word.endsWith("।");
-                const midpoint = Math.floor(displayWords.length / 2);
-                const isMidBreak = !hasPunctBreak && displayWords.length >= 6 && idx === midpoint - 1;
+                // Line break ONLY after punctuation: , ! | ।
+                const hasPunctBreak = w.word.endsWith(",") || w.word.endsWith("!") || w.word.endsWith("|") || w.word.endsWith("।");
 
                 return (
                     <React.Fragment key={`w-${idx}`}>
@@ -337,7 +335,7 @@ const LyricDisplay: React.FC<{
                         >
                             {w.word}{" "}
                         </span>
-                        {(hasPunctBreak || isMidBreak) && <br />}
+                        {hasPunctBreak && <br />}
                     </React.Fragment>
                 );
             })}

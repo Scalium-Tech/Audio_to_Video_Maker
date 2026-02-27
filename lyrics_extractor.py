@@ -8,9 +8,12 @@ Strategy:
 3. Strip stage directions in parentheses like (Rhythmic harmonium opening...)
 4. Keep only lines containing Devanagari Unicode characters (U+0900–U+097F)
 5. Deduplicate consecutive identical lines (keep max 2 repeats for choruses)
+6. Use Gemini API to add punctuation (, ! ।) without changing text
 """
 
 import re
+import os
+import json
 
 
 def extract_lyrics_from_text(raw_text: str) -> str:
@@ -78,10 +81,7 @@ def extract_lyrics_from_text(raw_text: str) -> str:
         if line:
             clean_lines.append(line)
     
-    # --- Step 3: Limit consecutive duplicates (keep max 2 for chorus repeats) ---
-    deduplicated = _limit_consecutive_repeats(clean_lines, max_repeats=2)
-    
-    result = "\n".join(deduplicated)
+    result = "\n".join(clean_lines)
     
     return result
 
@@ -125,46 +125,178 @@ def _has_devanagari(text: str) -> bool:
     return bool(re.search(r'[\u0900-\u097F]', text))
 
 
-def _limit_consecutive_repeats(lines: list, max_repeats: int = 2) -> list:
+
+
+
+def add_punctuation_with_gemini(lyrics_text: str, api_key: str = None) -> str:
     """
-    Limit consecutive identical lines to max_repeats.
-    This handles chorus sections that repeat the same line 4+ times.
+    Use Gemini API to add punctuation to clean lyrics without changing
+    any words, order, or format.
+    
+    Adds:
+    - , (comma) at natural pauses within lines
+    - ! after exclamatory/devotional phrases
+    - । (purna viram) at verse/sentence ends
+    
+    Returns:
+        Punctuated lyrics text, same format (one line per lyric line).
     """
-    if not lines:
-        return lines
+    import requests
     
-    result = []
-    count = 1
+    api_key = api_key or os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        print("WARNING: No GEMINI_API_KEY found. Returning lyrics without punctuation.")
+        return lyrics_text
     
-    for i, line in enumerate(lines):
-        if i > 0 and line == lines[i - 1]:
-            count += 1
-        else:
-            count = 1
+    if not lyrics_text or not lyrics_text.strip():
+        return lyrics_text
+    
+    lines = lyrics_text.strip().split("\n")
+    total = len(lines)
+    
+    # Number each line so Gemini preserves them all
+    numbered = "\n".join([f"L{i+1}: {line}" for i, line in enumerate(lines)])
+    
+    prompt = f"""You are a Hindi/Devanagari punctuation expert. Add punctuation to these lyrics.
+
+RULES:
+- DO NOT change any words, spelling, or order
+- DO NOT add or remove any lines
+- DO NOT transliterate — keep everything in Devanagari
+- There are exactly {total} lines. Output exactly {total} lines.
+- Only ONE punctuation mark per position (never combine like !,)
+
+PUNCTUATION TO ADD:
+- , (comma) at natural pauses within a line
+- ! after exclamatory/devotional phrases like जय, हर हर महादेव, ॐ नमः शिवाय, राधे राधे, गणपति बप्पा मोरया, भोलेनाथ, etc.
+- । (purna viram) at the end of complete verses/sentences
+
+INPUT LYRICS ({total} lines):
+{numbered}
+
+Return ONLY a JSON array of {total} strings, one per line, in the same order:
+["line1 with punctuation", "line2 with punctuation", ...]
+
+Return ONLY the JSON array:"""
+    
+    models = ["gemini-2.5-flash", "gemini-2.0-flash"]
+    
+    for model_name in models:
+        print(f"  Adding punctuation with {model_name}...", flush=True)
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
         
-        if count <= max_repeats:
-            result.append(line)
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 8192}
+        }
+        
+        try:
+            response = requests.post(url, json=payload, timeout=60)
+            if response.status_code != 200:
+                print(f"  {model_name}: HTTP {response.status_code}", flush=True)
+                continue
+            
+            result = response.json()
+            parts = result["candidates"][0]["content"]["parts"]
+            all_texts = [p["text"] for p in parts if "text" in p]
+            text_response = all_texts[-1] if all_texts else ""
+            
+            if not text_response:
+                continue
+            
+            # Parse JSON array
+            try:
+                data = json.loads(text_response.strip())
+            except json.JSONDecodeError:
+                stripped = text_response.replace("```json", "").replace("```", "").strip()
+                try:
+                    data = json.loads(stripped)
+                except json.JSONDecodeError:
+                    s, e = stripped.find("["), stripped.rfind("]")
+                    if s >= 0 and e > s:
+                        data = json.loads(stripped[s:e+1])
+                    else:
+                        print(f"  {model_name}: No JSON found", flush=True)
+                        continue
+            
+            if not isinstance(data, list):
+                print(f"  {model_name}: Response is not an array", flush=True)
+                continue
+            
+            # Validate: must have same number of lines
+            if len(data) != total:
+                print(f"  {model_name}: Got {len(data)} lines, expected {total}. Using best effort.", flush=True)
+                if len(data) < total:
+                    data.extend(lines[len(data):])
+                else:
+                    data = data[:total]
+            
+            # Clean double punctuation from each line
+            cleaned = []
+            for line in data:
+                line = str(line)
+                line = line.replace("!,", "!").replace(",!", "!")
+                line = line.replace(",।", "।").replace("।,", "।")
+                cleaned.append(line)
+            
+            result_text = "\n".join(cleaned)
+            print(f"  SUCCESS: Punctuated {total} lines with {model_name}", flush=True)
+            
+            # Show sample
+            for i, (orig, punct) in enumerate(zip(lines[:3], cleaned[:3])):
+                if orig != punct:
+                    print(f"    L{i+1}: \"{orig}\" -> \"{punct}\"")
+            
+            return result_text
+            
+        except json.JSONDecodeError as e:
+            print(f"  {model_name}: JSON parse error: {e}", flush=True)
+        except Exception as e:
+            print(f"  {model_name}: Error: {e}", flush=True)
     
-    return result
+    print("  All models failed. Returning lyrics without punctuation.", flush=True)
+    return lyrics_text
 
 
-# --- CLI test ---
+# --- CLI ---
 if __name__ == "__main__":
     import sys
+    from dotenv import load_dotenv
+    load_dotenv()
     
     if len(sys.argv) < 2:
         print("Usage: python lyrics_extractor.py <path_to_txt_file>")
         sys.exit(1)
     
     filepath = sys.argv[1]
+    
     with open(filepath, "r", encoding="utf-8") as f:
         raw = f.read()
     
+    # Step 1: Extract clean lyrics
     extracted = extract_lyrics_from_text(raw)
     
     print("=" * 50)
     print("EXTRACTED LYRICS:")
     print("=" * 50)
     print(extracted)
-    print("=" * 50)
     print(f"Total lines: {len(extracted.splitlines())}")
+    
+    # Step 2: Add punctuation via Gemini
+    print("\n" + "=" * 50)
+    print("ADDING PUNCTUATION VIA GEMINI...")
+    print("=" * 50)
+    punctuated = add_punctuation_with_gemini(extracted)
+    
+    if punctuated != extracted:
+        print("\nPUNCTUATED LYRICS:")
+        print(punctuated)
+        
+        # Overwrite the txt file with punctuated lyrics
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(punctuated)
+        print(f"\nOverwritten {filepath} with punctuated lyrics.")
+    else:
+        print("No changes made.")
+    
+    print("=" * 50)

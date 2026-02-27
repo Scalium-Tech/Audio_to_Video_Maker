@@ -53,9 +53,8 @@ def _find_ground_truth(song_path):
     return None
 
 
-def process_single_song(song_path_str, model_name="large-v2", skip_isolation=False):
+def process_single_song(song_path_str):
     """Process a single song. Designed to run in a separate process."""
-    # Import inside function to avoid multiprocessing issues
     from dotenv import load_dotenv
     load_dotenv()
     
@@ -77,19 +76,10 @@ def process_single_song(song_path_str, model_name="large-v2", skip_isolation=Fal
             except Exception as e:
                 print(f"  Warning: Could not read ground truth for {song_name}: {e}")
         
-        # Auto-skip isolation when ground truth is available
-        should_skip = skip_isolation or (ground_truth_text is not None)
-        if should_skip and not skip_isolation:
-            print(f"  ⚡ Auto-skipping vocal isolation (ground truth lyrics found)")
-        
-        # Execute pipeline
+        # Execute pipeline (NeMo alignment)
         pipeline.main(
             str(song_path),
-            language="hi",
-            model_name=model_name,
-            lyrics_text=None,
-            ground_truth_text=ground_truth_text,
-            skip_isolation=should_skip
+            ground_truth_text=ground_truth_text
         )
         
         duration = time.time() - start_time
@@ -103,7 +93,7 @@ def process_single_song(song_path_str, model_name="large-v2", skip_isolation=Fal
         return {"song": song_name, "status": "failed", "error": error_msg, "duration": round(duration, 1)}
 
 
-def process_batch(model_name="large-v2", max_workers=3, retry_failed=True, skip_isolation=False):
+def process_batch(max_workers=1, retry_failed=True):
     """
     Batch process all songs in input_songs/ with parallel workers.
     
@@ -114,7 +104,7 @@ def process_batch(model_name="large-v2", max_workers=3, retry_failed=True, skip_
     - Retry failed songs
     """
     print(f"\n{'='*60}")
-    print(f"       BATCH PROCESSOR (Model: {model_name}, Workers: {max_workers})")
+    print(f"       BATCH PROCESSOR (NeMo Alignment, Workers: {max_workers})")
     print(f"{'='*60}")
 
     INPUT_FOLDER.mkdir(exist_ok=True)
@@ -156,8 +146,8 @@ def process_batch(model_name="large-v2", max_workers=3, retry_failed=True, skip_
         _save_progress(progress)
         return
     
-    # Estimate time
-    est_per_song = 3 if skip_isolation else 7  # minutes
+    # Estimate time (~1.5 min per song with NeMo)
+    est_per_song = 1.5  # minutes
     est_sequential = remaining * est_per_song
     est_parallel = est_sequential / max_workers
     print(f"\nEstimated time: ~{est_parallel:.0f} min ({est_parallel/60:.1f} hours) with {max_workers} workers")
@@ -172,7 +162,7 @@ def process_batch(model_name="large-v2", max_workers=3, retry_failed=True, skip_
         # Sequential mode — simpler, better for debugging
         for i, song_path in enumerate(to_process, 1):
             print(f"\n>>> [{i}/{remaining}] Processing: {song_path.name}")
-            result = process_single_song(str(song_path), model_name, skip_isolation)
+            result = process_single_song(str(song_path))
             
             if result["status"] == "success":
                 results["success"] += 1
@@ -194,7 +184,7 @@ def process_batch(model_name="large-v2", max_workers=3, retry_failed=True, skip_
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             futures = {}
             for song_path in to_process:
-                future = executor.submit(process_single_song, str(song_path), model_name, skip_isolation)
+                future = executor.submit(process_single_song, str(song_path))
                 futures[future] = song_path.name
             
             for i, future in enumerate(as_completed(futures), 1):
@@ -250,16 +240,12 @@ def process_batch(model_name="large-v2", max_workers=3, retry_failed=True, skip_
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Batch Process Lyric Videos")
-    parser.add_argument("--model", default="large-v2", help="Whisper model (default: large-v2)")
-    parser.add_argument("--workers", type=int, default=1, help="Parallel workers (default: 1, recommended: 3)")
+    parser = argparse.ArgumentParser(description="Batch Process Lyric Videos (NeMo Alignment)")
+    parser.add_argument("--workers", type=int, default=1, help="Parallel workers (default: 1)")
     parser.add_argument("--no-retry", action="store_true", help="Don't retry previously failed songs")
-    parser.add_argument("--skip-isolation", action="store_true", help="Skip vocal isolation (use original MP3)")
     args = parser.parse_args()
     
     process_batch(
-        model_name=args.model,
         max_workers=args.workers,
-        retry_failed=not args.no_retry,
-        skip_isolation=args.skip_isolation
+        retry_failed=not args.no_retry
     )

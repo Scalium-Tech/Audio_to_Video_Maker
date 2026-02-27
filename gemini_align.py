@@ -632,6 +632,21 @@ def _transfer_punctuation(segments):
                     ti += 1
                     break
                 ti += 1
+        
+        # Clean double punctuation: only keep one trailing symbol per word
+        for w in words:
+            word = w["word"]
+            # Count trailing punctuation chars
+            punct_chars = ""
+            while word and word[-1] in ",!।.?|":
+                punct_chars = word[-1] + punct_chars
+                word = word[:-1]
+            if len(punct_chars) > 1:
+                # Keep only the first (most important) punctuation
+                w["word"] = word + punct_chars[0]
+        
+        # Also clean segment text
+        seg["text"] = seg["text"].replace("!,", "!").replace(",!", "!").replace(",।", "।").replace("।,", "।")
     
     return segments
 
