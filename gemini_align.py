@@ -2,7 +2,7 @@
 Gemini Forced Alignment Module
 =============================
 Sends audio + lyrics text to Gemini's multimodal API to get precise 
-word-level timestamps, replacing WhisperX's unreliable Hindi alignment.
+word-level timestamps. Used as fallback when NeMo alignment is unavailable.
 """
 
 import os
@@ -228,7 +228,7 @@ def full_pipeline_gemini(audio_path, ground_truth_text, api_key=None):
         audio_duration = round(len(audio_np) / sample_rate, 2)
         print(f"  Audio duration: {audio_duration:.1f}s", flush=True)
         
-        # Use WhisperX's bundled VAD model (local, no HuggingFace auth needed)
+        # Use pyannote VAD model for voice activity detection
         from whisperx.vads.pyannote import load_vad_model, Binarize
         
         vad_pipeline = load_vad_model("cpu")

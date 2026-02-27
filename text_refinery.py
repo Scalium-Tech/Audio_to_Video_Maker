@@ -75,7 +75,7 @@ def _split_segments_at_newlines(lyrics):
 
 def _reattach_word_timestamps(refined_lyrics, raw_segments):
     """
-    Re-attaches word-level timestamps from the original WhisperX segments
+    Re-attaches word-level timestamps from the original segments
     onto the Gemini-refined line-level lyrics by matching time ranges.
     
     For each refined line, finds all original words whose timestamps fall

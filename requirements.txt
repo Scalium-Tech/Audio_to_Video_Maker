@@ -1,13 +1,13 @@
-audio-separator[cpu]
-whisperx
+# LyricFlow — Python Dependencies
+# Install with: pip3.11 install -r requirements.txt
+
+nemo_toolkit[asr]
 google-generativeai
 python-dotenv
-ffmpeg-python
 soundfile
-ollama
-requests
+numpy
 torch
-torchaudio
-torchvision
-# Note: WhisperX often requires specific versions of transformers/ffmpeg-python
-# If you have an NVIDIA GPU, you may need a specific torch+cuXXX version.
+requests
+
+# Note: NeMo requires Python 3.11. The Hindi model (stt_hi_conformer_ctc_medium)
+# downloads automatically on first run (~100MB, cached at ~/.cache/torch/NeMo/).
