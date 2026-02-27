@@ -114,13 +114,18 @@ def main(audio_path, ground_truth_text=None, **kwargs):
         except Exception as e:
             print(f"  Punctuation failed: {e}. Continuing without.")
 
-        # Step 2: NeMo forced alignment
+        # Step 3: NeMo forced alignment (writes to temp file, then renames)
         print(f"\n--- Step 3: NeMo Forced Alignment ---")
+        lyrics_tmp = lyrics_file.with_suffix(".tmp")
         result = align_with_nemo(
             str(audio_file),
             lyrics_text,
-            str(lyrics_file)
+            str(lyrics_tmp)
         )
+        
+        if result:
+            # Atomic rename: tmp → lyrics.json
+            lyrics_tmp.rename(lyrics_file)
 
         if not result:
             print("  NeMo alignment failed.")
@@ -130,8 +135,10 @@ def main(audio_path, ground_truth_text=None, **kwargs):
                 from gemini_align import full_pipeline_gemini
                 result = full_pipeline_gemini(str(audio_path), lyrics_text)
                 if result:
-                    with open(lyrics_file, 'w', encoding='utf-8') as f:
+                    lyrics_tmp = lyrics_file.with_suffix(".tmp")
+                    with open(lyrics_tmp, 'w', encoding='utf-8') as f:
                         json.dump(result, f, ensure_ascii=False, indent=2)
+                    lyrics_tmp.rename(lyrics_file)
                     print(f"  Gemini fallback: {len(result)} segments saved")
                 else:
                     print("  Both NeMo and Gemini failed. Aborting.")
