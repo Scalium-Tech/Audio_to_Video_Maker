@@ -28,9 +28,11 @@
 | `main.py` | Core pipeline orchestrator |
 | `batch_processor.py` | Batch mode with safeguards (validation, locks, progress) |
 | `nemo_align.py` | NeMo CTC forced alignment (Hindi `stt_hi_conformer_ctc_medium`) |
+| `nemo_server.py` | Shared NeMo model server for parallel workers |
 | `lyrics_extractor.py` | Lyrics extraction + Gemini punctuation |
 | `gemini_align.py` | Gemini fallback alignment |
 | `generate_background.py` | AI background image generation |
+| `ffmpeg_render.py` | Optimized renderer (half-res + VideoToolbox HW encoding) |
 | `video/src/LyricVideo.tsx` | Remotion video component |
 | `.env` | Contains `GEMINI_API_KEY` |
 
@@ -39,8 +41,8 @@
 # Batch (all songs in input_songs/):
 ./start
 
-# With parallel workers:
-./start --workers 3
+# With parallel workers + render throttle:
+./start --workers 20 --max-render-workers 6
 
 # Single song:
 python3.11 nemo_align.py input_songs/song.mp3 ground_truth_lyrics/song.mp3.txt
@@ -63,21 +65,22 @@ python3.11 nemo_align.py input_songs/song.mp3 ground_truth_lyrics/song.mp3.txt
 
 ## 🚧 Current Work In Progress
 
-### Active Task: Bulk Processing Safeguards — ✅ COMPLETE
-- **Status**: All safeguards implemented
+### Active Task: Performance Optimizations for 20 Parallel Workers — ✅ COMPLETE
+- **Status**: All optimizations implemented
 - **What's done**:
-  - NeMo forced alignment replacing WhisperX (40ms precision)
-  - Pre-flight validation (mp3↔txt pairing report)
-  - Lock files (prevent duplicate processing)
-  - Atomic writes (temp → rename)
-  - Per-song error logs
-  - Progress dashboard (`progress.json`)
+  - Half-res internal rendering (960×540 → 1080p upscale via FFmpeg Lanczos)
+  - Numpy pre-allocated frame buffers (no `.copy()` per frame)
+  - VideoToolbox hardware H.264 encoding (with libx264 fallback)
+  - Shared NeMo model server (loads once, serves all workers via queues)
+  - ThreadPoolExecutor + render semaphore (queue 20 jobs, limit FFmpeg to 6)
+  - New `--max-render-workers` CLI flag
 - **What's left**: None
 - **Blockers**: None
 
 ### Recent Changes Log
 | Date | What Changed | Files Modified |
 |---|---|---|
+| 2026-02-27 | Performance optimizations for 20 workers | `ffmpeg_render.py`, `nemo_server.py` [NEW], `nemo_align.py`, `batch_processor.py`, `main.py`, `start` |
 | 2026-02-27 | Bulk processing safeguards | `batch_processor.py` |
 | 2026-02-27 | NeMo alignment replacing WhisperX | `nemo_align.py` [NEW], `main.py`, `start` |
 | 2026-02-27 | Gemini punctuation integration | `lyrics_extractor.py`, `nemo_align.py` |
@@ -92,6 +95,9 @@ python3.11 nemo_align.py input_songs/song.mp3 ground_truth_lyrics/song.mp3.txt
 - Gemini only used for: punctuation + background image generation + fallback alignment
 - Ground truth lyrics go in `ground_truth_lyrics/` with filename `<mp3_name>.txt`
 - Output goes to `output_song/<song_name>/` (lyrics.json + video MP4)
+- Internal render: 960×540, upscaled to 1920×1080 via FFmpeg Lanczos filter
+- Encoder: `h264_videotoolbox` (hardware) with `libx264` fallback
+- Shared NeMo server: single process loads model, workers request log-probs via queues
 - Estimated: ~4.5 min per song (30s alignment + 3.5min rendering)
 
 ---

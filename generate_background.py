@@ -24,6 +24,33 @@ def analyze_song_topic(song_name: str, lyrics_text: str, api_key: str = None) ->
     # Take first 500 chars of lyrics for context
     lyrics_preview = lyrics_text[:500] if lyrics_text else ""
 
+    # Random style elements to ensure every image is unique
+    import random
+    lighting_styles = [
+        "soft golden backlight", "dramatic rim lighting", "ethereal moonlight glow",
+        "warm candlelight ambiance", "mystical blue twilight", "sunrise orange rays",
+        "deep purple cosmic light", "sacred fire illumination", "misty dawn light",
+        "celestial starlight", "warm amber temple glow", "cool silver radiance"
+    ]
+    color_palettes = [
+        "deep indigo and gold", "dark teal and copper", "midnight blue and amber",
+        "rich burgundy and gold", "deep emerald and bronze", "dark violet and silver",
+        "charcoal and warm gold", "navy and rose gold", "dark forest green and gold",
+        "obsidian and saffron", "deep crimson and pearl", "mahogany and champagne"
+    ]
+    compositions = [
+        "centered symmetrical composition", "slightly off-center with depth",
+        "wide cinematic framing", "close-up with bokeh background",
+        "looking upward with dramatic perspective", "silhouette against cosmic backdrop",
+        "surrounded by floating petals and particles", "emerging from sacred smoke",
+        "reflected in still water", "framed by temple arches",
+        "amidst swirling cosmic nebula", "within a mandala of light"
+    ]
+    
+    style = random.choice(lighting_styles)
+    palette = random.choice(color_palettes)
+    comp = random.choice(compositions)
+
     prompt = f"""You are a visual art director for Indian devotional music videos.
 
 Given this song information, generate a SHORT image prompt (max 2 sentences) describing the perfect background image for a lyric video.
@@ -31,12 +58,14 @@ Given this song information, generate a SHORT image prompt (max 2 sentences) des
 Song Title: {song_name}
 Lyrics Preview: {lyrics_preview}
 
+STYLE DIRECTION: Use {style} with {palette} color palette. Compose with {comp}.
+
 RULES:
 1. Identify the deity or spiritual theme (Shiva, Krishna, Ganesh, Ram, Hanuman, Durga, etc.)
 2. Describe a majestic, cinematic scene featuring that deity or theme
-3. Use dark, moody tones suitable for text overlay (dark backgrounds work best)
-4. Include atmospheric elements (cosmic, ethereal lighting, sacred symbols)
-5. Keep the prompt under 2 sentences
+3. Include atmospheric elements (cosmic, ethereal lighting, sacred symbols)
+4. ABSOLUTELY NO TEXT, NO LETTERS, NO WORDS, NO WRITING, NO CAPTIONS in the image
+5. The image must be purely visual — no watermarks, no titles, no inscriptions
 6. If you cannot identify a specific deity, describe a generic spiritual/devotional scene
 
 Return ONLY the image prompt text, nothing else."""
@@ -52,6 +81,8 @@ Return ONLY the image prompt text, nothing else."""
         if response.status_code == 200:
             result = response.json()
             image_prompt = result['candidates'][0]['content']['parts'][0]['text'].strip()
+            # Append no-text instruction directly to the image prompt
+            image_prompt += " Absolutely no text, letters, words, or writing anywhere in the image."
             print(f"Generated image prompt: {image_prompt}")
             return image_prompt
         else:
@@ -181,8 +212,24 @@ def generate_background_image(song_name: str, lyrics_text: str, output_path: str
     except Exception as e:
         print(f"Imagen fallback error: {e}")
 
-    print("WARNING: Could not generate background image. Video will use gradient fallback.")
-    return False
+    # Fallback: generate a dark gradient image using Pillow so the pipeline never crashes
+    print("WARNING: All image APIs failed. Generating dark gradient fallback background.")
+    try:
+        from PIL import Image, ImageDraw
+        img = Image.new('RGB', (1920, 1080), (10, 10, 30))
+        draw = ImageDraw.Draw(img)
+        # Subtle radial-ish gradient: darker edges, slightly lighter center
+        for r in range(600, 0, -5):
+            brightness = int(15 + (r / 600) * 25)
+            color = (brightness, brightness, brightness + 10)
+            cx, cy = 960, 540
+            draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=color)
+        img.save(str(output_path), quality=95)
+        print(f"  Fallback gradient saved to {output_path}")
+        return True
+    except Exception as fallback_err:
+        print(f"  CRITICAL: Even fallback image generation failed: {fallback_err}")
+        return False
 
 
 def get_lyrics_text_from_json(lyrics_path: str) -> str:

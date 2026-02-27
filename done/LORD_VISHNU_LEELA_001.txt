@@ -1,0 +1,150 @@
+Metadata for: Final_Bhajans_(Latest)-LORD_VISHNU_LEELA_001-883a9d16-81f7-470b-830c-667fa17b8f85.mp3
+Generated: 2026-02-27T11:31:31.309Z
+
+--- Track Information ---
+Title: LORD_VISHNU_LEELA_001
+Artist: jitendrajainnew
+Year: 2026
+
+--- Musical Information ---
+
+--- Creation Details ---
+Prompt: Satsang style bhajan with simple melody for group singing, harmonium and dholak accompaniment, moderate tempo, easy-to-follow lyrics, hand-clapping rhythm, joyful community vibe, clear lead vocal with strong chorus participation, catchy uplifting melody. No English Words.
+
+--- Lyrics ---
+[Intro]
+(Harmonium lead melody starts, followed by a steady dholak beat and rhythmic hand-clapping)
+
+[Verse 1]
+क्षीर सिंधु के वासी प्रभु तुम, शेषनाग पर सोहें
+मंद मंद मुस्कान तुम्हारी, सबका मनवा मोहें
+
+[Pre-Chorus]
+शंख चक्र और गदा हाथ में, पीताम्बर की माया
+कोटि सूर्य का तेज मुख मंडल, जग पर प्रभु की छाया
+
+[Chorus]
+नारायण हरि, नारायण हरि
+नारायण हरि, नारायण हरि
+नारायण हरि, नारायण हरि
+नारायण हरि, नारायण हरि
+
+[Verse 2]
+मत्स्य बने और कूर्म बने तुम, संकट को है टाला
+नरसिंह रूप धरा भक्तों हित, मार दिया मतवाला
+
+[Pre-Chorus]
+वामन बन कर तीन डगों में, तीनों लोक को नापा
+जय श्री हरि के जाप से ही तो, मिटे हृदय का कांपा
+
+[Chorus]
+नारायण हरि, नारायण हरि
+नारायण हरि, नारायण हरि
+नारायण हरि, नारायण हरि
+नारायण हरि, नारायण हरि
+
+[Bridge]
+अनंत लीला अनंत महिमा, अंत नहीं है कोई
+नाम तुम्हारा जो भी गावे, विपदा उसकी खोई
+
+[Verse 3]
+राम रूप ले मर्यादा दी, कृष्ण रूप ले गीता
+भक्तों के तुम रक्षक भगवन, जग के पालनकर्ता
+
+[Chorus]
+नारायण हरि, नारायण हरि
+नारायण हरि, नारायण हरि
+नारायण हरि, नारायण हरि
+नारायण हरि, नारायण हरि
+
+[Outro]
+(Dholak beats accelerate with enthusiastic group hand-clapping and repeated chanting of Narayan Narayan until fade out)
+
+Cover Art URL: https://cdn2.suno.ai/image_883a9d16-81f7-470b-830c-667fa17b8f85.jpeg
+
+--- Raw API Response ---
+{
+  "status": "complete",
+  "title": "LORD_VISHNU_LEELA_001",
+  "play_count": 0,
+  "upvote_count": 0,
+  "allow_comments": true,
+  "id": "883a9d16-81f7-470b-830c-667fa17b8f85",
+  "entity_type": "song_schema",
+  "video_url": "",
+  "audio_url": "https://cdn1.suno.ai/883a9d16-81f7-470b-830c-667fa17b8f85.mp3",
+  "image_url": "https://cdn2.suno.ai/image_883a9d16-81f7-470b-830c-667fa17b8f85.jpeg",
+  "image_large_url": "https://cdn2.suno.ai/image_large_883a9d16-81f7-470b-830c-667fa17b8f85.jpeg",
+  "major_model_version": "v5",
+  "model_name": "chirp-crow",
+  "metadata": {
+    "tags": "Satsang style bhajan with simple melody for group singing, harmonium and dholak accompaniment, moderate tempo, easy-to-follow lyrics, hand-clapping rhythm, joyful community vibe, clear lead vocal with strong chorus participation, catchy uplifting melody. No English Words.",
+    "prompt": "[Intro]\n(Harmonium lead melody starts, followed by a steady dholak beat and rhythmic hand-clapping)\n\n[Verse 1]\nक्षीर सिंधु के वासी प्रभु तुम, शेषनाग पर सोहें\nमंद मंद मुस्कान तुम्हारी, सबका मनवा मोहें\n\n[Pre-Chorus]\nशंख चक्र और गदा हाथ में, पीताम्बर की माया\nकोटि सूर्य का तेज मुख मंडल, जग पर प्रभु की छाया\n\n[Chorus]\nनारायण हरि, नारायण हरि\nनारायण हरि, नारायण हरि\nनारायण हरि, नारायण हरि\nनारायण हरि, नारायण हरि\n\n[Verse 2]\nमत्स्य बने और कूर्म बने तुम, संकट को है टाला\nनरसिंह रूप धरा भक्तों हित, मार दिया मतवाला\n\n[Pre-Chorus]\nवामन बन कर तीन डगों में, तीनों लोक को नापा\nजय श्री हरि के जाप से ही तो, मिटे हृदय का कांपा\n\n[Chorus]\nनारायण हरि, नारायण हरि\nनारायण हरि, नारायण हरि\nनारायण हरि, नारायण हरि\nनारायण हरि, नारायण हरि\n\n[Bridge]\nअनंत लीला अनंत महिमा, अंत नहीं है कोई\nनाम तुम्हारा जो भी गावे, विपदा उसकी खोई\n\n[Verse 3]\nराम रूप ले मर्यादा दी, कृष्ण रूप ले गीता\nभक्तों के तुम रक्षक भगवन, जग के पालनकर्ता\n\n[Chorus]\nनारायण हरि, नारायण हरि\nनारायण हरि, नारायण हरि\nनारायण हरि, नारायण हरि\nनारायण हरि, नारायण हरि\n\n[Outro]\n(Dholak beats accelerate with enthusiastic group hand-clapping and repeated chanting of Narayan Narayan until fade out)",
+    "type": "gen",
+    "duration": 479.36,
+    "refund_credits": false,
+    "stream": true,
+    "make_instrumental": false,
+    "can_remix": true,
+    "is_remix": false,
+    "priority": 10,
+    "has_stem": false,
+    "uses_latest_model": true,
+    "model_badges": {
+      "songcard": {
+        "display_name": "v5",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        }
+      },
+      "songrow": {
+        "display_name": "v5",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "FD429C1A",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "FD429C40",
+          "border_color": "00000000"
+        }
+      }
+    }
+  },
+  "is_liked": false,
+  "user_id": "fa84ed6d-a5cb-4f13-89e5-9c619afa50af",
+  "display_name": "jitendrajainnew",
+  "handle": "jitendrajainnew",
+  "is_handle_updated": true,
+  "avatar_image_url": "https://cdn1.suno.ai/sAura10.jpg",
+  "is_trashed": false,
+  "is_hidden": false,
+  "created_at": "2026-02-24T15:01:16.213Z",
+  "is_public": false,
+  "is_following_creator": false,
+  "project": {
+    "id": "11ee8efc-30e3-4e37-9f89-148f61b22bf6",
+    "name": "Final Bhajans (Latest)",
+    "description": "",
+    "is_trashed": false,
+    "is_public": false
+  },
+  "ownership": {
+    "ownership_reason": "subscribed"
+  },
+  "explicit": false,
+  "comment_count": 0,
+  "flag_count": 0,
+  "display_tags": "devotional, folk",
+  "is_contest_clip": false,
+  "has_hook": false,
+  "batch_index": 0
+}

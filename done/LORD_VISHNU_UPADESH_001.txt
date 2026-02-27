@@ -1,0 +1,158 @@
+Metadata for: Final_Bhajans_(Latest)-LORD_VISHNU_UPADESH_001-bc73afb2-9586-49e2-8baf-8a1a53b115f9.mp3
+Generated: 2026-02-27T11:31:03.827Z
+
+--- Track Information ---
+Title: LORD_VISHNU_UPADESH_001
+Artist: jitendrajainnew
+Year: 2026
+
+--- Musical Information ---
+
+--- Creation Details ---
+Prompt: Dhun style bhajan with catchy repeating hook, harmonium lead, medium-fast tempo, steady tabla and dholak, manjira and claps, joyful devotional mood, simple structure, high repeatability, clean energetic ending. No English Words.
+
+--- Lyrics ---
+[Intro]
+(Fast energetic harmonium lead, rhythmic manjira and steady dholak rhythm, clapping starts)
+
+[Verse 1]
+जीवन की इस कठिन डगर में, तू ही राह दिखाए।
+हर उलझन में प्रभु हमारे, साथ सदा ही आएँ।
+सत्य मार्ग का ज्ञान दिया है, उपदेशों की वाणी।
+तेरी शरण में आकर सुधरे, जग का हर एक प्राणी।
+
+[Pre-Chorus]
+सब संकट मिट जाएँगे, जब मुख से ये गाएँ।
+भक्ति रस में डूब कर, हम झूम-झूम जाएँ।
+
+[Chorus]
+नारायण नारायण हरि नारायण।
+नारायण नारायण हरि नारायण।
+नारायण नारायण हरि नारायण।
+नारायण नारायण हरि नारायण।
+
+[Verse 2]
+मोह त्याग कर कर्म को अपना, फल की चिंता छोड़।
+प्रेम और विश्वास की डोरी, प्रभु के संग तू जोड़।
+धर्म की रक्षा करने वाले, पालनहार हैं स्वामी।
+घट-घट के वो वासी हैं और, हैं अंतर्यामी।
+
+[Pre-Chorus]
+सब संकट मिट जाएँगे, जब मुख से ये गाएँ।
+भक्ति रस में डूब कर, हम झूम-झूम जाएँ।
+
+[Chorus]
+नारायण नारायण हरि नारायण।
+नारायण नारायण हरि नारायण।
+नारायण नारायण हरि नारायण।
+नारायण नारायण हरि नारायण।
+
+[Bridge]
+जय जय विष्णु, जय जय माधव, जय श्री मधुसूदन।
+मिट जाए सब पाप जगत के, कर लो इनका सुमिरन।
+चक्र सुदर्शन धारी स्वामी, तुम हो तारणहारे।
+भक्तों के तुम रक्षक भगवन, प्राणों से भी प्यारे।
+
+[Verse 3]
+तेरा तुझको अर्पण कर दे, मन का अहंकार मिटा।
+विष्णु चरण में शीश झुकाकर, अपना भाग्य जगा।
+दया करो हे करुणा सागर, भक्ति का वर दे दो।
+अपने पावन प्रेम से प्रभु, खाली झोली भर दो।
+
+[Chorus]
+नारायण नारायण हरि नारायण।
+नारायण नारायण हरि नारायण।
+नारायण नारायण हरि नारायण।
+नारायण नारायण हरि नारायण।
+
+[Outro]
+(Increasing tempo of dholak and manjira, joyful repetitive chanting of Hari Narayan, final energetic beat with loud claps)
+
+Cover Art URL: https://cdn2.suno.ai/image_bc73afb2-9586-49e2-8baf-8a1a53b115f9.jpeg
+
+--- Raw API Response ---
+{
+  "status": "complete",
+  "title": "LORD_VISHNU_UPADESH_001",
+  "play_count": 0,
+  "upvote_count": 0,
+  "allow_comments": true,
+  "id": "bc73afb2-9586-49e2-8baf-8a1a53b115f9",
+  "entity_type": "song_schema",
+  "video_url": "",
+  "audio_url": "https://cdn1.suno.ai/bc73afb2-9586-49e2-8baf-8a1a53b115f9.mp3",
+  "image_url": "https://cdn2.suno.ai/image_bc73afb2-9586-49e2-8baf-8a1a53b115f9.jpeg",
+  "image_large_url": "https://cdn2.suno.ai/image_large_bc73afb2-9586-49e2-8baf-8a1a53b115f9.jpeg",
+  "major_model_version": "v5",
+  "model_name": "chirp-crow",
+  "metadata": {
+    "tags": "Dhun style bhajan with catchy repeating hook, harmonium lead, medium-fast tempo, steady tabla and dholak, manjira and claps, joyful devotional mood, simple structure, high repeatability, clean energetic ending. No English Words.",
+    "prompt": "[Intro]\n(Fast energetic harmonium lead, rhythmic manjira and steady dholak rhythm, clapping starts)\n\n[Verse 1]\nजीवन की इस कठिन डगर में, तू ही राह दिखाए।\nहर उलझन में प्रभु हमारे, साथ सदा ही आएँ।\nसत्य मार्ग का ज्ञान दिया है, उपदेशों की वाणी।\nतेरी शरण में आकर सुधरे, जग का हर एक प्राणी।\n\n[Pre-Chorus]\nसब संकट मिट जाएँगे, जब मुख से ये गाएँ।\nभक्ति रस में डूब कर, हम झूम-झूम जाएँ।\n\n[Chorus]\nनारायण नारायण हरि नारायण।\nनारायण नारायण हरि नारायण।\nनारायण नारायण हरि नारायण।\nनारायण नारायण हरि नारायण।\n\n[Verse 2]\nमोह त्याग कर कर्म को अपना, फल की चिंता छोड़।\nप्रेम और विश्वास की डोरी, प्रभु के संग तू जोड़।\nधर्म की रक्षा करने वाले, पालनहार हैं स्वामी।\nघट-घट के वो वासी हैं और, हैं अंतर्यामी।\n\n[Pre-Chorus]\nसब संकट मिट जाएँगे, जब मुख से ये गाएँ।\nभक्ति रस में डूब कर, हम झूम-झूम जाएँ।\n\n[Chorus]\nनारायण नारायण हरि नारायण।\nनारायण नारायण हरि नारायण।\nनारायण नारायण हरि नारायण।\nनारायण नारायण हरि नारायण।\n\n[Bridge]\nजय जय विष्णु, जय जय माधव, जय श्री मधुसूदन।\nमिट जाए सब पाप जगत के, कर लो इनका सुमिरन।\nचक्र सुदर्शन धारी स्वामी, तुम हो तारणहारे।\nभक्तों के तुम रक्षक भगवन, प्राणों से भी प्यारे।\n\n[Verse 3]\nतेरा तुझको अर्पण कर दे, मन का अहंकार मिटा।\nविष्णु चरण में शीश झुकाकर, अपना भाग्य जगा।\nदया करो हे करुणा सागर, भक्ति का वर दे दो।\nअपने पावन प्रेम से प्रभु, खाली झोली भर दो।\n\n[Chorus]\nनारायण नारायण हरि नारायण।\nनारायण नारायण हरि नारायण।\nनारायण नारायण हरि नारायण।\nनारायण नारायण हरि नारायण।\n\n[Outro]\n(Increasing tempo of dholak and manjira, joyful repetitive chanting of Hari Narayan, final energetic beat with loud claps)",
+    "type": "gen",
+    "duration": 258.16,
+    "refund_credits": false,
+    "stream": true,
+    "make_instrumental": false,
+    "can_remix": true,
+    "is_remix": false,
+    "priority": 10,
+    "has_stem": false,
+    "uses_latest_model": true,
+    "model_badges": {
+      "songcard": {
+        "display_name": "v5",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        }
+      },
+      "songrow": {
+        "display_name": "v5",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "FD429C1A",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "FD429C40",
+          "border_color": "00000000"
+        }
+      }
+    }
+  },
+  "is_liked": false,
+  "user_id": "fa84ed6d-a5cb-4f13-89e5-9c619afa50af",
+  "display_name": "jitendrajainnew",
+  "handle": "jitendrajainnew",
+  "is_handle_updated": true,
+  "avatar_image_url": "https://cdn1.suno.ai/sAura10.jpg",
+  "is_trashed": false,
+  "is_hidden": false,
+  "created_at": "2026-02-24T15:03:31.128Z",
+  "is_public": false,
+  "is_following_creator": false,
+  "project": {
+    "id": "11ee8efc-30e3-4e37-9f89-148f61b22bf6",
+    "name": "Final Bhajans (Latest)",
+    "description": "",
+    "is_trashed": false,
+    "is_public": false
+  },
+  "ownership": {
+    "ownership_reason": "subscribed"
+  },
+  "explicit": false,
+  "comment_count": 0,
+  "flag_count": 0,
+  "display_tags": "bhajan, devotional music",
+  "is_contest_clip": false,
+  "has_hook": false,
+  "batch_index": 1
+}

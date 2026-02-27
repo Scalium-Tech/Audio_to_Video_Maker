@@ -1,0 +1,76 @@
+#!/bin/bash
+# ============================================================
+#  LyricFlow — Clean All Generated & Cached Files
+#  Usage: ./clear_all
+#
+#  Removes: output_song/, done/, separated/, models/,
+#           __pycache__/, .DS_Store, video/public/ assets,
+#           progress files, benchmark CSV
+#
+#  Keeps: source code, input_songs/, ground_truth_lyrics/,
+#         .env, video/ (except public assets)
+# ============================================================
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+echo ""
+echo "╔══════════════════════════════════════════════════════╗"
+echo "║         🧹 LyricFlow — Cleaning All Files           ║"
+echo "╚══════════════════════════════════════════════════════╝"
+echo ""
+
+# Generated outputs
+if [ -d "output_song" ]; then
+    SIZE=$(du -sh output_song 2>/dev/null | cut -f1)
+    rm -rf output_song
+    echo "  ✅ Removed output_song/  ($SIZE)"
+fi
+
+# Done folder
+if [ -d "done" ]; then
+    SIZE=$(du -sh done 2>/dev/null | cut -f1)
+    rm -rf done
+    echo "  ✅ Removed done/  ($SIZE)"
+fi
+
+# Separated vocals
+if [ -d "separated" ]; then
+    SIZE=$(du -sh separated 2>/dev/null | cut -f1)
+    rm -rf separated
+    echo "  ✅ Removed separated/  ($SIZE)"
+fi
+
+# Downloaded models
+if [ -d "models" ]; then
+    SIZE=$(du -sh models 2>/dev/null | cut -f1)
+    rm -rf models
+    echo "  ✅ Removed models/  ($SIZE)"
+fi
+
+# Python cache
+find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null && echo "  ✅ Removed __pycache__/" || true
+
+# macOS junk
+find . -name ".DS_Store" -delete 2>/dev/null && echo "  ✅ Removed .DS_Store files" || true
+
+# Video public assets (generated per song)
+rm -f video/public/audio.mp3 video/public/audio_*.mp3 video/public/lyrics_*.json video/public/background.jpg video/public/background_*.jpg 2>/dev/null && echo "  ✅ Removed video/public/ assets" || true
+
+# Recreate placeholder lyrics.json (required for Remotion to bundle)
+echo '[]' > video/public/lyrics.json
+
+# Stale temp files
+find . -name "*.tmp" -delete 2>/dev/null && echo "  ✅ Removed .tmp files" || true
+
+echo ""
+echo "╔══════════════════════════════════════════════════════╗"
+echo "║         ✅ All clean! Ready for fresh run.           ║"
+echo "╚══════════════════════════════════════════════════════╝"
+echo ""
+echo "  Your input files are untouched:"
+echo "    📂 input_songs/"
+echo "    📂 ground_truth_lyrics/"
+echo ""

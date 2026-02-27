@@ -1,0 +1,161 @@
+Metadata for: Final_Bhajans_(Latest)-LORD_VISHNU_AAVAHAN_001-6ec38d25-a260-48af-9ca7-ad8fdf171fed.mp3
+Generated: 2026-02-27T11:31:57.890Z
+
+--- Track Information ---
+Title: LORD_VISHNU_AAVAHAN_001
+Artist: jitendrajainnew
+Year: 2026
+
+--- Musical Information ---
+
+--- Creation Details ---
+Prompt: [Atmosphere: Live Festival Crowd] Utsav style devotional bhajan, festive energy, loud dhol and nagada, shehnai lead, fast tempo 140 BPM, [Vocals: Energetic & Shouting], group shouting chorus, celebratory vibe, rhythmic breaks, [Effect: Live Concert Reverb]. No English Words.
+
+--- Lyrics ---
+[Intro]
+(Massive live festival crowd cheering, explosive dhol and nagada rolls, high-pitched festive shehnai fanfare, energetic rhythmic clapping)
+
+[Verse 1]
+क्षीर सागर के स्वामी आओ
+भक्त पुकारें द्वारे आओ
+मंगलकारी रूप तुम्हारा
+जगत का तुम हो एक सहारा
+
+[Pre-Chorus]
+बजने लगे हैं ढोल और ताशे
+गूंज उठा है चारों ओर
+भक्तों की टोली नाच रही है
+मचा है भारी शोर
+
+[Chorus]
+नारायण हरि नारायण
+नारायण हरि नारायण
+नारायण हरि नारायण
+नारायण हरि नारायण
+
+[Verse 2]
+शंख चक्र गदा पद्म धारी
+महिमा तेरी सबसे न्यारी
+गरुड़ सवारी अद्भुत साजे
+मन मंदिर में तू ही विराजे
+
+[Pre-Chorus]
+बजने लगे हैं ढोल और ताशे
+गूंज उठा है चारों ओर
+भक्तों की टोली नाच रही है
+मचा है भारी शोर
+
+[Chorus]
+नारायण हरि नारायण
+नारायण हरि नारायण
+नारायण हरि नारायण
+नारायण हरि नारायण
+
+[Bridge]
+(Fast rhythmic dhol solo, group shouting 'Hari Bol' and 'Jai Ho' in sync, heavy nagada beats, crowd energy at peak)
+हरि ॐ, हरि ॐ, हरि ॐ, हरि ॐ
+हरि ॐ, हरि ॐ, हरि ॐ, हरि ॐ
+
+[Verse 3]
+दुख हरो तुम संकट काटो
+खुशियों का अमृत तुम बांटो
+हर हृदय में ज्योति जगाओ
+हे लक्ष्मीपति जल्दी आओ
+
+[Chorus]
+नारायण हरि नारायण
+नारायण हरि नारायण
+नारायण हरि नारायण
+नारायण हरि नारायण
+
+[Outro]
+(Climax with extremely fast dhol beats, loud celebratory shehnai, crowd shouting 'Jai Shri Hari' in unison, final loud drum strike)
+
+Cover Art URL: https://cdn2.suno.ai/image_6ec38d25-a260-48af-9ca7-ad8fdf171fed.jpeg
+
+--- Raw API Response ---
+{
+  "status": "complete",
+  "title": "LORD_VISHNU_AAVAHAN_001",
+  "play_count": 0,
+  "upvote_count": 0,
+  "allow_comments": true,
+  "id": "6ec38d25-a260-48af-9ca7-ad8fdf171fed",
+  "entity_type": "song_schema",
+  "video_url": "",
+  "audio_url": "https://cdn1.suno.ai/6ec38d25-a260-48af-9ca7-ad8fdf171fed.mp3",
+  "image_url": "https://cdn2.suno.ai/image_6ec38d25-a260-48af-9ca7-ad8fdf171fed.jpeg",
+  "image_large_url": "https://cdn2.suno.ai/image_large_6ec38d25-a260-48af-9ca7-ad8fdf171fed.jpeg",
+  "major_model_version": "v5",
+  "model_name": "chirp-crow",
+  "metadata": {
+    "tags": "[Atmosphere: Live Festival Crowd] Utsav style devotional bhajan, festive energy, loud dhol and nagada, shehnai lead, fast tempo 140 BPM, [Vocals: Energetic & Shouting], group shouting chorus, celebratory vibe, rhythmic breaks, [Effect: Live Concert Reverb]. No English Words.",
+    "prompt": "[Intro]\n(Massive live festival crowd cheering, explosive dhol and nagada rolls, high-pitched festive shehnai fanfare, energetic rhythmic clapping)\n\n[Verse 1]\nक्षीर सागर के स्वामी आओ\nभक्त पुकारें द्वारे आओ\nमंगलकारी रूप तुम्हारा\nजगत का तुम हो एक सहारा\n\n[Pre-Chorus]\nबजने लगे हैं ढोल और ताशे\nगूंज उठा है चारों ओर\nभक्तों की टोली नाच रही है\nमचा है भारी शोर\n\n[Chorus]\nनारायण हरि नारायण\nनारायण हरि नारायण\nनारायण हरि नारायण\nनारायण हरि नारायण\n\n[Verse 2]\nशंख चक्र गदा पद्म धारी\nमहिमा तेरी सबसे न्यारी\nगरुड़ सवारी अद्भुत साजे\nमन मंदिर में तू ही विराजे\n\n[Pre-Chorus]\nबजने लगे हैं ढोल और ताशे\nगूंज उठा है चारों ओर\nभक्तों की टोली नाच रही है\nमचा है भारी शोर\n\n[Chorus]\nनारायण हरि नारायण\nनारायण हरि नारायण\nनारायण हरि नारायण\nनारायण हरि नारायण\n\n[Bridge]\n(Fast rhythmic dhol solo, group shouting 'Hari Bol' and 'Jai Ho' in sync, heavy nagada beats, crowd energy at peak)\nहरि ॐ, हरि ॐ, हरि ॐ, हरि ॐ\nहरि ॐ, हरि ॐ, हरि ॐ, हरि ॐ\n\n[Verse 3]\nदुख हरो तुम संकट काटो\nखुशियों का अमृत तुम बांटो\nहर हृदय में ज्योति जगाओ\nहे लक्ष्मीपति जल्दी आओ\n\n[Chorus]\nनारायण हरि नारायण\nनारायण हरि नारायण\nनारायण हरि नारायण\nनारायण हरि नारायण\n\n[Outro]\n(Climax with extremely fast dhol beats, loud celebratory shehnai, crowd shouting 'Jai Shri Hari' in unison, final loud drum strike)",
+    "type": "gen",
+    "duration": 194.84,
+    "refund_credits": false,
+    "stream": true,
+    "make_instrumental": false,
+    "can_remix": true,
+    "is_remix": false,
+    "priority": 10,
+    "has_stem": false,
+    "uses_latest_model": true,
+    "model_badges": {
+      "songcard": {
+        "display_name": "v5",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        }
+      },
+      "songrow": {
+        "display_name": "v5",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "FD429C1A",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "FD429C40",
+          "border_color": "00000000"
+        }
+      }
+    }
+  },
+  "is_liked": false,
+  "user_id": "fa84ed6d-a5cb-4f13-89e5-9c619afa50af",
+  "display_name": "jitendrajainnew",
+  "handle": "jitendrajainnew",
+  "is_handle_updated": true,
+  "avatar_image_url": "https://cdn1.suno.ai/sAura10.jpg",
+  "is_trashed": false,
+  "is_hidden": false,
+  "created_at": "2026-02-24T14:58:04.703Z",
+  "is_public": false,
+  "is_following_creator": false,
+  "project": {
+    "id": "11ee8efc-30e3-4e37-9f89-148f61b22bf6",
+    "name": "Final Bhajans (Latest)",
+    "description": "",
+    "is_trashed": false,
+    "is_public": false
+  },
+  "ownership": {
+    "ownership_reason": "subscribed"
+  },
+  "explicit": false,
+  "comment_count": 0,
+  "flag_count": 0,
+  "display_tags": "devotional, world music, folk",
+  "is_contest_clip": false,
+  "has_hook": false,
+  "batch_index": 1
+}

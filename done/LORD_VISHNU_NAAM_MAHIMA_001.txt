@@ -1,0 +1,158 @@
+Metadata for: Final_Bhajans_(Latest)-LORD_VISHNU_NAAM_MAHIMA_001-2c5e3ae3-4945-477c-9d30-d48feed6e38d.mp3
+Generated: 2026-02-27T11:31:40.797Z
+
+--- Track Information ---
+Title: LORD_VISHNU_NAAM_MAHIMA_001
+Artist: jitendrajainnew
+Year: 2026
+
+--- Musical Information ---
+
+--- Creation Details ---
+Prompt: Classic traditional Ganapati bhajan with tanpura drone and harmonium melody, medium tempo steady tabla and dholak rhythm, manjira and temple bells, devotional lead singer with soft backing chorus in chorus sections, warm temple hall ambience, uplifting and respectful, smooth traditional arrangement, peaceful ending. No English Words.
+
+--- Lyrics ---
+[Intro]
+(Soft tanpura drone with a gentle harmonium melody, light manjira clinking and traditional temple bells, setting a meditative and divine atmosphere)
+
+[Verse 1]
+शांत स्वरूपं जगत आधारं
+क्षीर सागर में वास तुम्हारा
+करुणा के तुम स्वामी भगवन
+भक्तों का तुम बनते सहारा
+
+[Pre-Chorus]
+जो भी तुम्हारा नाम पुकारे
+उसके संकट हरते सारे
+
+[Chorus]
+हरी ओम नमो नारायणा
+हरी ओम नमो नारायणा
+हरी ओम नमो नारायणा
+हरी ओम नमो नारायणा
+
+[Verse 2]
+चक्र सुदर्शन हाथ सोहता
+पीतांबर की छवि है प्यारी
+संकट जब भी आए धरा पर
+रक्षा करते विष्णु मुरारी
+
+[Pre-Chorus]
+जो भी तुम्हारा नाम पुकारे
+उसके संकट हरते सारे
+
+[Chorus]
+हरी ओम नमो नारायणा
+हरी ओम नमो नारायणा
+हरी ओम नमो नारायणा
+हरी ओम नमो नारायणा
+
+[Bridge]
+नारायण नारायण जय जय श्री हरी
+नारायण नारायण जय जय श्री हरी
+संकट हारी मंगल कारी
+विष्णु देवा महिमा तुम्हारी
+
+[Verse 3]
+नाम जपने से मुक्ति मिले
+जीवन का अंधियारा ढले
+चरणों में हम शीश झुकाते
+भक्ति का ये दीप जलाते
+
+[Chorus]
+हरी ओम नमो नारायणा
+हरी ओम नमो नारायणा
+हरी ओम नमो नारायणा
+हरी ओम नमो नारायणा
+
+[Outro]
+(The steady rhythm of the dholak slows down, harmonium plays a soft fading melody, ending with a single deep temple bell sound and the lingering hum of the tanpura)
+
+Cover Art URL: https://cdn2.suno.ai/image_2c5e3ae3-4945-477c-9d30-d48feed6e38d.jpeg
+
+--- Raw API Response ---
+{
+  "status": "complete",
+  "title": "LORD_VISHNU_NAAM_MAHIMA_001",
+  "play_count": 0,
+  "upvote_count": 0,
+  "allow_comments": true,
+  "id": "2c5e3ae3-4945-477c-9d30-d48feed6e38d",
+  "entity_type": "song_schema",
+  "video_url": "",
+  "audio_url": "https://cdn1.suno.ai/2c5e3ae3-4945-477c-9d30-d48feed6e38d.mp3",
+  "image_url": "https://cdn2.suno.ai/image_2c5e3ae3-4945-477c-9d30-d48feed6e38d.jpeg",
+  "image_large_url": "https://cdn2.suno.ai/image_large_2c5e3ae3-4945-477c-9d30-d48feed6e38d.jpeg",
+  "major_model_version": "v5",
+  "model_name": "chirp-crow",
+  "metadata": {
+    "tags": "Classic traditional Ganapati bhajan with tanpura drone and harmonium melody, medium tempo steady tabla and dholak rhythm, manjira and temple bells, devotional lead singer with soft backing chorus in chorus sections, warm temple hall ambience, uplifting and respectful, smooth traditional arrangement, peaceful ending. No English Words.",
+    "prompt": "[Intro]\n(Soft tanpura drone with a gentle harmonium melody, light manjira clinking and traditional temple bells, setting a meditative and divine atmosphere)\n\n[Verse 1]\nशांत स्वरूपं जगत आधारं\nक्षीर सागर में वास तुम्हारा\nकरुणा के तुम स्वामी भगवन\nभक्तों का तुम बनते सहारा\n\n[Pre-Chorus]\nजो भी तुम्हारा नाम पुकारे\nउसके संकट हरते सारे\n\n[Chorus]\nहरी ओम नमो नारायणा\nहरी ओम नमो नारायणा\nहरी ओम नमो नारायणा\nहरी ओम नमो नारायणा\n\n[Verse 2]\nचक्र सुदर्शन हाथ सोहता\nपीतांबर की छवि है प्यारी\nसंकट जब भी आए धरा पर\nरक्षा करते विष्णु मुरारी\n\n[Pre-Chorus]\nजो भी तुम्हारा नाम पुकारे\nउसके संकट हरते सारे\n\n[Chorus]\nहरी ओम नमो नारायणा\nहरी ओम नमो नारायणा\nहरी ओम नमो नारायणा\nहरी ओम नमो नारायणा\n\n[Bridge]\nनारायण नारायण जय जय श्री हरी\nनारायण नारायण जय जय श्री हरी\nसंकट हारी मंगल कारी\nविष्णु देवा महिमा तुम्हारी\n\n[Verse 3]\nनाम जपने से मुक्ति मिले\nजीवन का अंधियारा ढले\nचरणों में हम शीश झुकाते\nभक्ति का ये दीप जलाते\n\n[Chorus]\nहरी ओम नमो नारायणा\nहरी ओम नमो नारायणा\nहरी ओम नमो नारायणा\nहरी ओम नमो नारायणा\n\n[Outro]\n(The steady rhythm of the dholak slows down, harmonium plays a soft fading melody, ending with a single deep temple bell sound and the lingering hum of the tanpura)",
+    "type": "gen",
+    "duration": 211.16,
+    "refund_credits": false,
+    "stream": true,
+    "make_instrumental": false,
+    "can_remix": true,
+    "is_remix": false,
+    "priority": 10,
+    "has_stem": false,
+    "uses_latest_model": true,
+    "model_badges": {
+      "songcard": {
+        "display_name": "v5",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        }
+      },
+      "songrow": {
+        "display_name": "v5",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "FD429C1A",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "FD429C40",
+          "border_color": "00000000"
+        }
+      }
+    }
+  },
+  "is_liked": false,
+  "user_id": "fa84ed6d-a5cb-4f13-89e5-9c619afa50af",
+  "display_name": "jitendrajainnew",
+  "handle": "jitendrajainnew",
+  "is_handle_updated": true,
+  "avatar_image_url": "https://cdn1.suno.ai/sAura10.jpg",
+  "is_trashed": false,
+  "is_hidden": false,
+  "created_at": "2026-02-24T15:00:16.692Z",
+  "is_public": false,
+  "is_following_creator": false,
+  "project": {
+    "id": "11ee8efc-30e3-4e37-9f89-148f61b22bf6",
+    "name": "Final Bhajans (Latest)",
+    "description": "",
+    "is_trashed": false,
+    "is_public": false
+  },
+  "ownership": {
+    "ownership_reason": "subscribed"
+  },
+  "explicit": false,
+  "comment_count": 0,
+  "flag_count": 0,
+  "display_tags": "classical, devotional, world",
+  "is_contest_clip": false,
+  "has_hook": false,
+  "batch_index": 0
+}

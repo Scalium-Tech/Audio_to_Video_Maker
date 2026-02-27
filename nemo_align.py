@@ -154,7 +154,7 @@ def _ctc_forced_align(log_probs, targets, blank_id=0):
     return alignments
 
 
-def align_with_nemo(audio_path, lyrics_text, output_path=None):
+def align_with_nemo(audio_path, lyrics_text, output_path=None, nemo_client=None):
     """
     Main function: Align lyrics to audio using NeMo's Hindi CTC model.
     
@@ -162,10 +162,22 @@ def align_with_nemo(audio_path, lyrics_text, output_path=None):
         audio_path: Path to audio file (MP3/WAV/M4A)
         lyrics_text: Clean lyrics string (one line per lyric line)
         output_path: Optional path to save lyrics.json
+        nemo_client: Optional NemoModelClient for shared server mode
     
     Returns:
         List of segments: [{"text": str, "start": float, "end": float, "words": [...]}]
     """
+    # Auto-detect: if client provided or server running, use shared model
+    if nemo_client is not None:
+        return _align_with_nemo_client(audio_path, lyrics_text, output_path, nemo_client)
+    
+    try:
+        from nemo_server import is_server_running
+        if is_server_running():
+            print("  NeMo server detected but no client provided, loading model directly.", flush=True)
+    except ImportError:
+        pass
+    
     import torch
     from nemo.collections.asr.models import ASRModel
     
@@ -324,6 +336,119 @@ def align_with_nemo(audio_path, lyrics_text, output_path=None):
                 print(f"      {w['start']:.2f}-{w['end']:.2f}: \"{w['word']}\"")
         
         # Save if output path specified
+        if output_path:
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(segments, f, ensure_ascii=False, indent=2)
+            print(f"  Saved: {output_path}", flush=True)
+        
+        return segments
+
+
+def _align_with_nemo_client(audio_path, lyrics_text, output_path, nemo_client):
+    """
+    Align using the shared NeMo model server (no per-worker model loading).
+    """
+    audio_path = Path(audio_path)
+    original_lines = [l.strip() for l in lyrics_text.strip().split("\n") if l.strip()]
+    
+    if not original_lines:
+        print("  ERROR: No lyrics lines provided.", flush=True)
+        return None
+    
+    print(f"  NeMo Forced Aligner (shared server): {len(original_lines)} lyrics lines", flush=True)
+    
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+        
+        # Step 1: Convert to WAV
+        wav_path = _convert_to_wav(audio_path, tmpdir / "audio.wav")
+        
+        # Step 2: Get log-probs from shared server (NO model loading!)
+        print("  Requesting log-probs from shared NeMo server...", flush=True)
+        log_probs_np, audio_duration, vocab_info = nemo_client.get_log_probs(wav_path)
+        
+        T = log_probs_np.shape[0]
+        frame_duration = audio_duration / T
+        print(f"  Audio: {audio_duration:.1f}s, {T} frames, {frame_duration*1000:.1f}ms/frame", flush=True)
+        
+        # Step 3: Build vocabulary from server info
+        vocab = vocab_info["vocab"]
+        blank_id = vocab_info["blank_id"]
+        char_to_idx = {c: i for i, c in enumerate(vocab)}
+        
+        # Step 4: Tokenize and align (same logic as direct mode)
+        clean_lines = [_strip_punctuation(line) for line in original_lines]
+        full_clean_text = " ".join(clean_lines)
+        
+        full_tokens = []
+        full_char_list = []
+        for ch in full_clean_text:
+            if ch == " ":
+                full_tokens.append(char_to_idx.get(" ", char_to_idx.get("\u2581", -1)))
+                full_char_list.append(" ")
+            elif ch in char_to_idx:
+                full_tokens.append(char_to_idx[ch])
+                full_char_list.append(ch)
+        
+        valid = [(t, c) for t, c in zip(full_tokens, full_char_list) if t >= 0]
+        full_tokens = [v[0] for v in valid]
+        full_char_list = [v[1] for v in valid]
+        
+        if not full_tokens:
+            print("  ERROR: No valid tokens found.", flush=True)
+            return None
+        
+        print(f"  Aligning {len(full_tokens)} tokens to {T} frames...", flush=True)
+        alignments = _ctc_forced_align(log_probs_np, full_tokens, blank_id)
+        
+        if not alignments:
+            print("  ERROR: Forced alignment returned no results.", flush=True)
+            return None
+        
+        print(f"  Alignment done: {len(alignments)} token alignments", flush=True)
+        
+        # Character → word → line grouping (identical to direct mode)
+        char_times = []
+        for token_idx, start_frame, end_frame in alignments:
+            char = full_char_list[token_idx]
+            start_time = round(start_frame * frame_duration, 3)
+            end_time = round((end_frame + 1) * frame_duration, 3)
+            char_times.append({"char": char, "start": start_time, "end": end_time})
+        
+        all_words = []
+        current_word_chars = []
+        word_start = None
+        word_end = None
+        
+        for ct in char_times:
+            if ct["char"] == " ":
+                if current_word_chars:
+                    word_text = "".join(current_word_chars)
+                    all_words.append({"word": word_text, "start": word_start, "end": word_end})
+                    current_word_chars = []
+                    word_start = None
+            else:
+                current_word_chars.append(ct["char"])
+                if word_start is None:
+                    word_start = ct["start"]
+                word_end = ct["end"]
+        
+        if current_word_chars:
+            word_text = "".join(current_word_chars)
+            all_words.append({"word": word_text, "start": word_start, "end": word_end})
+        
+        print(f"  {len(all_words)} words extracted", flush=True)
+        
+        segments = _map_words_to_lines(all_words, original_lines, clean_lines)
+        
+        # Clean double punctuation
+        for seg in segments:
+            seg["text"] = seg["text"].replace("!,", "!").replace(",!", "!").replace(",\u0964", "\u0964")
+            for w in seg.get("words", []):
+                w["word"] = w["word"].replace("!,", "!").replace(",!", "!").replace(",\u0964", "\u0964")
+        
+        print(f"  SUCCESS: {len(segments)} aligned segments", flush=True)
+        
         if output_path:
             with open(output_path, "w", encoding="utf-8") as f:
                 json.dump(segments, f, ensure_ascii=False, indent=2)

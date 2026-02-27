@@ -1,0 +1,153 @@
+Metadata for: Final_Bhajans_(Latest)-LORD_SHIVA_DIGITAL_DEVOTION_001-19567d63-87e3-44d8-8955-98db9a19b711.mp3
+Generated: 2026-02-27T11:32:13.714Z
+
+--- Track Information ---
+Title: LORD_SHIVA_DIGITAL_DEVOTION_001
+Artist: jitendrajainnew
+Year: 2026
+
+--- Musical Information ---
+
+--- Creation Details ---
+Prompt: Hindi Devotional | Kirtan Style | Fast Tempo 120 BPM | Dholak and Manjira | Group Vocals | Hand Clapping | Energetic | Raw Live Feel No English Words.
+
+--- Lyrics ---
+[Intro]
+(Fast energetic dholak roll, rhythmic manjira clashing, group hand clapping starts, deep chanting of Om Namah Shivaya)
+
+[Verse 1]
+मस्तक पर सोहे चंदा प्यारा
+जटा से बहती निर्मल धारा
+गले में सोहे नाग सुहाना
+भक्तों का तू ही सहारा
+
+[Pre-Chorus]
+डम डम डमरू बाजे रे
+त्रिशूल हाथ में साजे रे
+
+[Chorus]
+बम बम भोले, बम बम भोले
+बम बम भोले, बम बम भोले
+
+[Verse 2]
+तन पर भस्म और बाघम्बर
+तू ही धरती तू ही अम्बर
+नीलकंठ विष पीने वाले
+सबके संकट हरने वाले
+
+[Pre-Chorus]
+डम डम डमरू बाजे रे
+त्रिशूल हाथ में साजे रे
+
+[Chorus]
+बम बम भोले, बम बम भोले
+बम बम भोले, बम बम भोले
+
+[Bridge]
+(Tempo increases rapidly, high energy clapping and shouting)
+ओम नमः शिवाय, ओम नमः शिवाय
+ओम नमः शिवाय, ओम नमः शिवाय
+हर हर महादेव, हर हर महादेव
+शंभू शंकर, शंभू शंकर
+
+[Verse 3]
+नाम तेरा जो मुख से गाए
+सारे कष्ट वो भूल जाए
+शरण में तेरी जो भी आए
+मुक्ति का वो मार्ग पाए
+
+[Chorus]
+बम बम भोले, बम बम भोले
+बम बम भोले, बम बम भोले
+
+[Outro]
+(Sustained dholak beat, group shouting Har Har Mahadev, final loud manjira strike and sudden stop)
+
+Cover Art URL: https://cdn2.suno.ai/image_19567d63-87e3-44d8-8955-98db9a19b711.jpeg
+
+--- Raw API Response ---
+{
+  "status": "complete",
+  "title": "LORD_SHIVA_DIGITAL_DEVOTION_001",
+  "play_count": 0,
+  "upvote_count": 0,
+  "allow_comments": true,
+  "id": "19567d63-87e3-44d8-8955-98db9a19b711",
+  "entity_type": "song_schema",
+  "video_url": "",
+  "audio_url": "https://cdn1.suno.ai/19567d63-87e3-44d8-8955-98db9a19b711.mp3",
+  "image_url": "https://cdn2.suno.ai/image_19567d63-87e3-44d8-8955-98db9a19b711.jpeg",
+  "image_large_url": "https://cdn2.suno.ai/image_large_19567d63-87e3-44d8-8955-98db9a19b711.jpeg",
+  "major_model_version": "v5",
+  "model_name": "chirp-crow",
+  "metadata": {
+    "tags": "Hindi Devotional | Kirtan Style | Fast Tempo 120 BPM | Dholak and Manjira | Group Vocals | Hand Clapping | Energetic | Raw Live Feel No English Words.",
+    "prompt": "[Intro]\n(Fast energetic dholak roll, rhythmic manjira clashing, group hand clapping starts, deep chanting of Om Namah Shivaya)\n\n[Verse 1]\nमस्तक पर सोहे चंदा प्यारा\nजटा से बहती निर्मल धारा\nगले में सोहे नाग सुहाना\nभक्तों का तू ही सहारा\n\n[Pre-Chorus]\nडम डम डमरू बाजे रे\nत्रिशूल हाथ में साजे रे\n\n[Chorus]\nबम बम भोले, बम बम भोले\nबम बम भोले, बम बम भोले\n\n[Verse 2]\nतन पर भस्म और बाघम्बर\nतू ही धरती तू ही अम्बर\nनीलकंठ विष पीने वाले\nसबके संकट हरने वाले\n\n[Pre-Chorus]\nडम डम डमरू बाजे रे\nत्रिशूल हाथ में साजे रे\n\n[Chorus]\nबम बम भोले, बम बम भोले\nबम बम भोले, बम बम भोले\n\n[Bridge]\n(Tempo increases rapidly, high energy clapping and shouting)\nओम नमः शिवाय, ओम नमः शिवाय\nओम नमः शिवाय, ओम नमः शिवाय\nहर हर महादेव, हर हर महादेव\nशंभू शंकर, शंभू शंकर\n\n[Verse 3]\nनाम तेरा जो मुख से गाए\nसारे कष्ट वो भूल जाए\nशरण में तेरी जो भी आए\nमुक्ति का वो मार्ग पाए\n\n[Chorus]\nबम बम भोले, बम बम भोले\nबम बम भोले, बम बम भोले\n\n[Outro]\n(Sustained dholak beat, group shouting Har Har Mahadev, final loud manjira strike and sudden stop)",
+    "type": "gen",
+    "duration": 163.92,
+    "refund_credits": false,
+    "stream": true,
+    "make_instrumental": false,
+    "can_remix": true,
+    "is_remix": false,
+    "priority": 10,
+    "has_stem": false,
+    "uses_latest_model": true,
+    "model_badges": {
+      "songcard": {
+        "display_name": "v5",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        }
+      },
+      "songrow": {
+        "display_name": "v5",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "FD429C1A",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "FD429C40",
+          "border_color": "00000000"
+        }
+      }
+    }
+  },
+  "is_liked": false,
+  "user_id": "fa84ed6d-a5cb-4f13-89e5-9c619afa50af",
+  "display_name": "jitendrajainnew",
+  "handle": "jitendrajainnew",
+  "is_handle_updated": true,
+  "avatar_image_url": "https://cdn1.suno.ai/sAura10.jpg",
+  "is_trashed": false,
+  "is_hidden": false,
+  "created_at": "2026-02-24T14:57:03.015Z",
+  "is_public": false,
+  "is_following_creator": false,
+  "project": {
+    "id": "11ee8efc-30e3-4e37-9f89-148f61b22bf6",
+    "name": "Final Bhajans (Latest)",
+    "description": "",
+    "is_trashed": false,
+    "is_public": false
+  },
+  "ownership": {
+    "ownership_reason": "subscribed"
+  },
+  "explicit": false,
+  "comment_count": 0,
+  "flag_count": 0,
+  "display_tags": "devotional, kirtan",
+  "is_contest_clip": false,
+  "has_hook": false,
+  "batch_index": 0
+}

@@ -1,0 +1,158 @@
+Metadata for: Final_Bhajans_(Latest)-LORD_SHIVA_YATRA_001-b6949d81-908a-4e5d-85e3-b23eef3201e9.mp3
+Generated: 2026-02-27T11:32:57.191Z
+
+--- Track Information ---
+Title: LORD_SHIVA_YATRA_001
+Artist: jitendrajainnew
+Year: 2026
+
+--- Musical Information ---
+
+--- Creation Details ---
+Prompt: Satsang style bhajan with simple melody for group singing, harmonium and dholak accompaniment, moderate tempo, easy-to-follow lyrics, hand-clapping rhythm, joyful community vibe, clear lead vocal with strong chorus participation, catchy uplifting melody. No English Words.
+
+--- Lyrics ---
+[Intro]
+(Harmonium solo melody, steady dholak rhythm starts, rhythmic hand-clapping begins at a moderate pace)
+
+[Verse 1]
+हाथों में लेकर शिव का नाम
+चल दिए हम भोले के धाम
+कंधे पर कावड़ सजा के
+पहुँचेंगे बाबा के गाँव
+
+[Pre-Chorus]
+मन में है बस एक ही आस
+भोले बाबा हमारे पास
+
+[Chorus]
+हर हर महादेव शंभू, काशी विश्वनाथ शंभू
+हर हर महादेव शंभू, काशी विश्वनाथ शंभू
+हर हर महादेव शंभू, काशी विश्वनाथ शंभू
+हर हर महादेव शंभू, काशी विश्वनाथ शंभू
+
+[Verse 2]
+जटा में गंगा, माथे पे चंदा
+गले में सोहे नागों का फंदा
+भस्म रमाए बैठे हैं योगी
+दूर करेंगे मन का द्वंद्व
+
+[Pre-Chorus]
+मन में है बस एक ही आस
+भोले बाबा हमारे पास
+
+[Chorus]
+हर हर महादेव शंभू, काशी विश्वनाथ शंभू
+हर हर महादेव शंभू, काशी विश्वनाथ शंभू
+हर हर महादेव शंभू, काशी विश्वनाथ शंभू
+हर हर महादेव शंभू, काशी विश्वनाथ शंभू
+
+[Bridge]
+डम डम डम डमरू बाजे
+सारा जग शिव में विराजे
+हर कोई जयकारे बोले
+द्वार तुम्हारे बाबा खोलें
+
+[Verse 3]
+ना कोई छोटा, ना कोई बड़ा
+शिव के द्वार पे सब है खड़ा
+भक्ति की शक्ति ऐसी है प्यारो
+हर कोई श्रद्धा के रंग में चढ़ा
+
+[Chorus]
+हर हर महादेव शंभू, काशी विश्वनाथ शंभू
+हर हर महादेव शंभू, काशी विश्वनाथ शंभू
+हर हर महादेव शंभू, काशी विश्वनाथ शंभू
+हर हर महादेव शंभू, काशी विश्वनाथ शंभू
+
+[Outro]
+(Group chanting Har Har Mahadev in unison, fading out with soft harmonium notes and steady dholak beats, final loud collective hand clap)
+
+Cover Art URL: https://cdn2.suno.ai/image_b6949d81-908a-4e5d-85e3-b23eef3201e9.jpeg
+
+--- Raw API Response ---
+{
+  "status": "complete",
+  "title": "LORD_SHIVA_YATRA_001",
+  "play_count": 0,
+  "upvote_count": 0,
+  "allow_comments": true,
+  "id": "b6949d81-908a-4e5d-85e3-b23eef3201e9",
+  "entity_type": "song_schema",
+  "video_url": "",
+  "audio_url": "https://cdn1.suno.ai/b6949d81-908a-4e5d-85e3-b23eef3201e9.mp3",
+  "image_url": "https://cdn2.suno.ai/image_b6949d81-908a-4e5d-85e3-b23eef3201e9.jpeg",
+  "image_large_url": "https://cdn2.suno.ai/image_large_b6949d81-908a-4e5d-85e3-b23eef3201e9.jpeg",
+  "major_model_version": "v5",
+  "model_name": "chirp-crow",
+  "metadata": {
+    "tags": "Satsang style bhajan with simple melody for group singing, harmonium and dholak accompaniment, moderate tempo, easy-to-follow lyrics, hand-clapping rhythm, joyful community vibe, clear lead vocal with strong chorus participation, catchy uplifting melody. No English Words.",
+    "prompt": "[Intro]\n(Harmonium solo melody, steady dholak rhythm starts, rhythmic hand-clapping begins at a moderate pace)\n\n[Verse 1]\nहाथों में लेकर शिव का नाम\nचल दिए हम भोले के धाम\nकंधे पर कावड़ सजा के\nपहुँचेंगे बाबा के गाँव\n\n[Pre-Chorus]\nमन में है बस एक ही आस\nभोले बाबा हमारे पास\n\n[Chorus]\nहर हर महादेव शंभू, काशी विश्वनाथ शंभू\nहर हर महादेव शंभू, काशी विश्वनाथ शंभू\nहर हर महादेव शंभू, काशी विश्वनाथ शंभू\nहर हर महादेव शंभू, काशी विश्वनाथ शंभू\n\n[Verse 2]\nजटा में गंगा, माथे पे चंदा\nगले में सोहे नागों का फंदा\nभस्म रमाए बैठे हैं योगी\nदूर करेंगे मन का द्वंद्व\n\n[Pre-Chorus]\nमन में है बस एक ही आस\nभोले बाबा हमारे पास\n\n[Chorus]\nहर हर महादेव शंभू, काशी विश्वनाथ शंभू\nहर हर महादेव शंभू, काशी विश्वनाथ शंभू\nहर हर महादेव शंभू, काशी विश्वनाथ शंभू\nहर हर महादेव शंभू, काशी विश्वनाथ शंभू\n\n[Bridge]\nडम डम डम डमरू बाजे\nसारा जग शिव में विराजे\nहर कोई जयकारे बोले\nद्वार तुम्हारे बाबा खोलें\n\n[Verse 3]\nना कोई छोटा, ना कोई बड़ा\nशिव के द्वार पे सब है खड़ा\nभक्ति की शक्ति ऐसी है प्यारो\nहर कोई श्रद्धा के रंग में चढ़ा\n\n[Chorus]\nहर हर महादेव शंभू, काशी विश्वनाथ शंभू\nहर हर महादेव शंभू, काशी विश्वनाथ शंभू\nहर हर महादेव शंभू, काशी विश्वनाथ शंभू\nहर हर महादेव शंभू, काशी विश्वनाथ शंभू\n\n[Outro]\n(Group chanting Har Har Mahadev in unison, fading out with soft harmonium notes and steady dholak beats, final loud collective hand clap)",
+    "type": "gen",
+    "duration": 173.08,
+    "refund_credits": false,
+    "stream": true,
+    "make_instrumental": false,
+    "can_remix": true,
+    "is_remix": false,
+    "priority": 10,
+    "has_stem": false,
+    "uses_latest_model": true,
+    "model_badges": {
+      "songcard": {
+        "display_name": "v5",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        }
+      },
+      "songrow": {
+        "display_name": "v5",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "FD429C1A",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "FD429C40",
+          "border_color": "00000000"
+        }
+      }
+    }
+  },
+  "is_liked": false,
+  "user_id": "fa84ed6d-a5cb-4f13-89e5-9c619afa50af",
+  "display_name": "jitendrajainnew",
+  "handle": "jitendrajainnew",
+  "is_handle_updated": true,
+  "avatar_image_url": "https://cdn1.suno.ai/sAura10.jpg",
+  "is_trashed": false,
+  "is_hidden": false,
+  "created_at": "2026-02-24T14:52:00.179Z",
+  "is_public": false,
+  "is_following_creator": false,
+  "project": {
+    "id": "11ee8efc-30e3-4e37-9f89-148f61b22bf6",
+    "name": "Final Bhajans (Latest)",
+    "description": "",
+    "is_trashed": false,
+    "is_public": false
+  },
+  "ownership": {
+    "ownership_reason": "subscribed"
+  },
+  "explicit": false,
+  "comment_count": 0,
+  "flag_count": 0,
+  "display_tags": "kirtan, devotional music",
+  "is_contest_clip": false,
+  "has_hook": false,
+  "batch_index": 0
+}

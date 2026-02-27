@@ -1,0 +1,179 @@
+Metadata for: Final_Bhajans_(Latest)-LORD_VISHNU_DHAM_SMARAN_001-1692ef7d-429f-482c-844e-9acc42182bfa.mp3
+Generated: 2026-02-27T11:31:20.465Z
+
+--- Track Information ---
+Title: LORD_VISHNU_DHAM_SMARAN_001
+Artist: jitendrajainnew
+Year: 2026
+
+--- Musical Information ---
+
+--- Creation Details ---
+Prompt: Kirtan style bhajan with call-and-response between lead singer and chorus group, steady tabla and dholak rhythm, harmonium and tanpura base, claps and manjira, lively mandir gathering vibe, gradually builds energy and ends strong. No English Words.
+
+--- Lyrics ---
+[Intro]
+(Soft tanpura and harmonium drone, slow rhythmic claps, lead singer starts with a deep soulful Om chanting, steady tabla enters)
+
+[Verse 1]
+बद्रीनाथ के ऊंचे शिखर पर
+बैठे नारायण अन्तर्यामी
+अलकनंदा की निर्मल धारा
+शीश नवाते सब अभिमानी
+
+[Pre-Chorus]
+चलो चलें हम उस नगरी में
+जहाँ बसते हैं प्रभु बनवारी
+
+[Chorus]
+जय जय विष्णु जय जय धामा
+जय नारायण मंगल नामा
+जय जय विष्णु जय जय धामा
+जय नारायण मंगल नामा
+जय जय विष्णु जय जय धामा
+जय नारायण मंगल नामा
+जय जय विष्णु जय जय धामा
+जय नारायण मंगल नामा
+
+[Verse 2]
+जगन्नाथ की अद्भुत माया
+द्वारकाधीश की पावन छाया
+शंख चक्र गदा पद्म सुशोभित
+भक्तों का मन हरदम हर्षित
+
+[Pre-Chorus]
+चलो चलें हम उस नगरी में
+जहाँ बसते हैं प्रभु बनवारी
+
+[Chorus]
+जय जय विष्णु जय जय धामा
+जय नारायण मंगल नामा
+जय जय विष्णु जय जय धामा
+जय नारायण मंगल नामा
+जय जय विष्णु जय जय धामा
+जय नारायण मंगल नामा
+जय जय विष्णु जय जय धामा
+जय नारायण मंगल नामा
+
+[Bridge]
+(Tempo increases, energetic dholak and fast manjira clashing, call and response style)
+(Lead): हरि ओम हरि ओम
+(Chorus): हरि ओम हरि ओम
+(Lead): नारायण नारायण
+(Chorus): नारायण नारायण
+(Lead): श्री हरि विष्णु
+(Chorus): श्री हरि विष्णु
+(Lead): मंगलकारी
+(Chorus): मंगलकारी
+
+[Verse 3]
+क्षीर सागर में शेष शय्या पर
+लक्ष्मी संग विराजे भगवन्
+भज लो नाम प्रभु का प्यारे
+हो जाएगा पावन तन मन
+
+[Chorus]
+जय जय विष्णु जय जय धामा
+जय नारायण मंगल नामा
+जय जय विष्णु जय जय धामा
+जय नारायण मंगल नामा
+जय जय विष्णु जय जय धामा
+जय नारायण मंगल नामा
+जय जय विष्णु जय जय धामा
+जय नारायण मंगल नामा
+
+[Outro]
+(Loud final dhun with heavy dholak and claps, slowing down gradually to a peaceful tanpura finish)
+जय श्री विष्णु
+जय श्री विष्णु
+नारायण नारायण
+(Fade out)
+
+Cover Art URL: https://cdn2.suno.ai/image_1692ef7d-429f-482c-844e-9acc42182bfa.jpeg
+
+--- Raw API Response ---
+{
+  "status": "complete",
+  "title": "LORD_VISHNU_DHAM_SMARAN_001",
+  "play_count": 0,
+  "upvote_count": 0,
+  "allow_comments": true,
+  "id": "1692ef7d-429f-482c-844e-9acc42182bfa",
+  "entity_type": "song_schema",
+  "video_url": "",
+  "audio_url": "https://cdn1.suno.ai/1692ef7d-429f-482c-844e-9acc42182bfa.mp3",
+  "image_url": "https://cdn2.suno.ai/image_1692ef7d-429f-482c-844e-9acc42182bfa.jpeg",
+  "image_large_url": "https://cdn2.suno.ai/image_large_1692ef7d-429f-482c-844e-9acc42182bfa.jpeg",
+  "major_model_version": "v5",
+  "model_name": "chirp-crow",
+  "metadata": {
+    "tags": "Kirtan style bhajan with call-and-response between lead singer and chorus group, steady tabla and dholak rhythm, harmonium and tanpura base, claps and manjira, lively mandir gathering vibe, gradually builds energy and ends strong. No English Words.",
+    "prompt": "[Intro]\n(Soft tanpura and harmonium drone, slow rhythmic claps, lead singer starts with a deep soulful Om chanting, steady tabla enters)\n\n[Verse 1]\nबद्रीनाथ के ऊंचे शिखर पर\nबैठे नारायण अन्तर्यामी\nअलकनंदा की निर्मल धारा\nशीश नवाते सब अभिमानी\n\n[Pre-Chorus]\nचलो चलें हम उस नगरी में\nजहाँ बसते हैं प्रभु बनवारी\n\n[Chorus]\nजय जय विष्णु जय जय धामा\nजय नारायण मंगल नामा\nजय जय विष्णु जय जय धामा\nजय नारायण मंगल नामा\nजय जय विष्णु जय जय धामा\nजय नारायण मंगल नामा\nजय जय विष्णु जय जय धामा\nजय नारायण मंगल नामा\n\n[Verse 2]\nजगन्नाथ की अद्भुत माया\nद्वारकाधीश की पावन छाया\nशंख चक्र गदा पद्म सुशोभित\nभक्तों का मन हरदम हर्षित\n\n[Pre-Chorus]\nचलो चलें हम उस नगरी में\nजहाँ बसते हैं प्रभु बनवारी\n\n[Chorus]\nजय जय विष्णु जय जय धामा\nजय नारायण मंगल नामा\nजय जय विष्णु जय जय धामा\nजय नारायण मंगल नामा\nजय जय विष्णु जय जय धामा\nजय नारायण मंगल नामा\nजय जय विष्णु जय जय धामा\nजय नारायण मंगल नामा\n\n[Bridge]\n(Tempo increases, energetic dholak and fast manjira clashing, call and response style)\n(Lead): हरि ओम हरि ओम\n(Chorus): हरि ओम हरि ओम\n(Lead): नारायण नारायण\n(Chorus): नारायण नारायण\n(Lead): श्री हरि विष्णु\n(Chorus): श्री हरि विष्णु\n(Lead): मंगलकारी\n(Chorus): मंगलकारी\n\n[Verse 3]\nक्षीर सागर में शेष शय्या पर\nलक्ष्मी संग विराजे भगवन्\nभज लो नाम प्रभु का प्यारे\nहो जाएगा पावन तन मन\n\n[Chorus]\nजय जय विष्णु जय जय धामा\nजय नारायण मंगल नामा\nजय जय विष्णु जय जय धामा\nजय नारायण मंगल नामा\nजय जय विष्णु जय जय धामा\nजय नारायण मंगल नामा\nजय जय विष्णु जय जय धामा\nजय नारायण मंगल नामा\n\n[Outro]\n(Loud final dhun with heavy dholak and claps, slowing down gradually to a peaceful tanpura finish)\nजय श्री विष्णु\nजय श्री विष्णु\nनारायण नारायण\n(Fade out)",
+    "type": "gen",
+    "duration": 224.92,
+    "refund_credits": false,
+    "stream": true,
+    "make_instrumental": false,
+    "can_remix": true,
+    "is_remix": false,
+    "priority": 10,
+    "has_stem": false,
+    "uses_latest_model": true,
+    "model_badges": {
+      "songcard": {
+        "display_name": "v5",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        }
+      },
+      "songrow": {
+        "display_name": "v5",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "FD429C1A",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "FD429C40",
+          "border_color": "00000000"
+        }
+      }
+    }
+  },
+  "is_liked": false,
+  "user_id": "fa84ed6d-a5cb-4f13-89e5-9c619afa50af",
+  "display_name": "jitendrajainnew",
+  "handle": "jitendrajainnew",
+  "is_handle_updated": true,
+  "avatar_image_url": "https://cdn1.suno.ai/sAura10.jpg",
+  "is_trashed": false,
+  "is_hidden": false,
+  "created_at": "2026-02-24T15:02:24.566Z",
+  "is_public": false,
+  "is_following_creator": false,
+  "project": {
+    "id": "11ee8efc-30e3-4e37-9f89-148f61b22bf6",
+    "name": "Final Bhajans (Latest)",
+    "description": "",
+    "is_trashed": false,
+    "is_public": false
+  },
+  "ownership": {
+    "ownership_reason": "subscribed"
+  },
+  "explicit": false,
+  "comment_count": 0,
+  "flag_count": 0,
+  "display_tags": "kirtan, bhajan",
+  "is_contest_clip": false,
+  "has_hook": false,
+  "batch_index": 0
+}

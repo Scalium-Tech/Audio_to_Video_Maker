@@ -1,11 +1,15 @@
 #!/bin/bash
 # ============================================================
-#  LyricFlow — One-Command Pipeline Launcher (NeMo Edition)
+#  LyricFlow — One-Command Pipeline Launcher (Optimized)
 #  Usage: ./start
 #
 #  1. Drop MP3 files into input_songs/
 #  2. Drop matching .txt files into ground_truth_lyrics/
 #  3. Run: ./start
+#
+#  Performance flags:
+#    --workers 20             Total parallel job slots
+#    --max-render-workers 6   Max concurrent FFmpeg encodes
 # ============================================================
 
 set -e
@@ -15,7 +19,7 @@ cd "$SCRIPT_DIR"
 
 echo ""
 echo "╔══════════════════════════════════════════════════════╗"
-echo "║   🎵 LyricFlow Pipeline (NeMo Alignment) Starting  ║"
+echo "║   🎵 LyricFlow Pipeline (Optimized) Starting       ║"
 echo "╚══════════════════════════════════════════════════════╝"
 echo ""
 
@@ -46,13 +50,41 @@ fi
 echo "🎵 Found $MP3_COUNT MP3 file(s) to process"
 echo ""
 
-# Ensure ground truth lyrics folder exists
-mkdir -p ground_truth_lyrics
+# Show optimization info
+echo "⚡ Optimizations enabled:"
+echo "   • Internal rendering at 960×540 (4x less memory)"
+echo "   • VideoToolbox hardware encoding (if available)"
+echo "   • Shared NeMo model server (loaded once)"
+echo "   • Semaphore-limited concurrent renders"
+echo ""
 
-# Run the batch processor with python3.11 (pass all args through)
+# Ensure folders exist
+mkdir -p ground_truth_lyrics
+mkdir -p output_song
+
+# Log file — capture everything (stdout + stderr) to file AND terminal
+LOG_FILE="output_song/pipeline.log"
+echo "📝 Logging to: $LOG_FILE"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+# Run the batch processor (safe to fail without killing script)
+set +e
 $PYTHON batch_processor.py "$@"
+EXIT_CODE=$?
+set -e
+
+# Cleanup NeMo server PID files if they exist
+rm -f output_song/.nemo_server.pid output_song/.nemo_server.ready
 
 echo ""
+if [ "$EXIT_CODE" -ne 0 ]; then
+    echo "╔══════════════════════════════════════════════════════╗"
+    echo "║    ❌ Pipeline finished with errors (exit $EXIT_CODE)     ║"
+    echo "║    Check output_song/benchmark.csv for details      ║"
+    echo "╚══════════════════════════════════════════════════════╝"
+    exit $EXIT_CODE
+fi
+
 echo "╔══════════════════════════════════════════════════════╗"
 echo "║         ✅ All done! Check output_song/ folder      ║"
 echo "╚══════════════════════════════════════════════════════╝"
