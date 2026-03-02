@@ -50,3 +50,6 @@ hybrid_injector.py
 input_songs/
 ground_truth_lyrics/
 venv/
+
+# Processed files
+done/

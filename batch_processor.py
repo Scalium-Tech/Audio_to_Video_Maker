@@ -18,6 +18,7 @@ import csv
 import time
 import json
 import shutil
+import subprocess
 import traceback
 from pathlib import Path
 from concurrent.futures import as_completed
@@ -28,6 +29,11 @@ INPUT_FOLDER = Path("input_songs")
 GROUND_TRUTH_FOLDER = Path("ground_truth_lyrics")
 OUTPUT_FOLDER = Path("output_song")
 DONE_FOLDER = Path("done")
+DELIVERY_FOLDER = Path.home() / "Desktop" / "Bhajan Video Complete"
+
+# Google Drive rclone config
+GDRIVE_REMOTE = "bhajan_drive"       # rclone remote name (from `rclone config`)
+GDRIVE_FOLDER = "Bhajan Video Complete"  # target folder on Google Drive
 PROGRESS_FILE = OUTPUT_FOLDER / "progress.json"
 BENCHMARK_CSV = OUTPUT_FOLDER / "benchmark.csv"
 
@@ -188,7 +194,7 @@ def _write_csv_row(song_name, result_info, total_duration):
 
 
 # ─────────────────────────────────────────────────
-# 4. FILE MANAGEMENT (done folder)
+# 4. FILE MANAGEMENT (done folder + delivery)
 # ─────────────────────────────────────────────────
 
 def _move_to_done(mp3_path, txt_path):
@@ -210,6 +216,64 @@ def _move_to_done(mp3_path, txt_path):
             print(f"  📦 Moved {txt_path.name} → done/")
     except Exception as e:
         print(f"  ⚠️  Could not move files to done/: {e}")
+
+
+def _move_video_to_delivery(song_name):
+    """
+    Upload completed video folder to Google Drive via rclone, then delete locally.
+    Falls back to local delivery folder if rclone fails.
+    """
+    song_dir = OUTPUT_FOLDER / song_name
+    
+    if not song_dir.exists() or not list(song_dir.glob("*.mp4")):
+        print(f"  ⚠️  No .mp4 found in {song_name}/, skipping delivery")
+        return
+    
+    # Try rclone upload to Google Drive
+    gdrive_dest = f"{GDRIVE_REMOTE}:{GDRIVE_FOLDER}/{song_name}"
+    try:
+        result = subprocess.run(
+            [
+                "rclone", "move",
+                str(song_dir),
+                gdrive_dest,
+                "--delete-empty-src-dirs",
+                "--transfers", "4",
+                "--checkers", "2",
+                "-v"
+            ],
+            capture_output=True, text=True, timeout=600  # 10 min timeout per song
+        )
+        
+        if result.returncode == 0:
+            # rclone move deletes files after upload; clean up empty dir if still there
+            if song_dir.exists() and not any(song_dir.iterdir()):
+                song_dir.rmdir()
+            print(f"  ☁️  Uploaded {song_name}/ → GDrive/{GDRIVE_FOLDER}/ (local copy deleted)")
+        else:
+            print(f"  ⚠️  rclone upload failed for {song_name}: {result.stderr[:200]}")
+            # Fallback: keep locally in delivery folder
+            _fallback_local_delivery(song_name, song_dir)
+    except subprocess.TimeoutExpired:
+        print(f"  ⚠️  rclone upload timed out for {song_name}, keeping locally")
+        _fallback_local_delivery(song_name, song_dir)
+    except FileNotFoundError:
+        print(f"  ⚠️  rclone not found! Install with: brew install rclone")
+        _fallback_local_delivery(song_name, song_dir)
+    except Exception as e:
+        print(f"  ⚠️  Upload error for {song_name}: {e}")
+        _fallback_local_delivery(song_name, song_dir)
+
+
+def _fallback_local_delivery(song_name, song_dir):
+    """Fallback: move to local delivery folder if rclone upload fails."""
+    DELIVERY_FOLDER.mkdir(parents=True, exist_ok=True)
+    dest = DELIVERY_FOLDER / song_name
+    try:
+        shutil.move(str(song_dir), str(dest))
+        print(f"  📦 Saved locally → {DELIVERY_FOLDER.name}/{song_name}/")
+    except Exception as e:
+        print(f"  ❌ Could not save {song_name} anywhere: {e}")
 
 
 # ─────────────────────────────────────────────────
@@ -460,6 +524,7 @@ def process_batch(max_workers=1, retry_failed=True, renderer="ffmpeg", max_rende
                 if result["status"] == "success":
                     results["success"] += 1
                     _move_to_done(mp3_path, txt_path)
+                    _move_video_to_delivery(mp3_path.stem)
                 elif result["status"] == "skipped":
                     results["skipped"] += 1
                 else:
@@ -498,6 +563,7 @@ def process_batch(max_workers=1, retry_failed=True, renderer="ffmpeg", max_rende
                         if result["status"] == "success":
                             results["success"] += 1
                             _move_to_done(mp3_path, txt_path)
+                            _move_video_to_delivery(song_name)
                             print(f"\n>>> [{i}/{remaining}] ✅ {song_name} ({result['duration']:.0f}s)")
                         elif result["status"] == "skipped":
                             results["skipped"] += 1
@@ -545,7 +611,8 @@ def process_batch(max_workers=1, retry_failed=True, renderer="ffmpeg", max_rende
     if results['success'] > 0:
         print(f"  📊 Avg per song: {total_time/max(results['success'],1)/60:.1f} min")
     print(f"  📄 Benchmark: {BENCHMARK_CSV}")
-    print(f"  📦 Completed files moved to: {DONE_FOLDER}/")
+    print(f"  📦 Source files moved to: {DONE_FOLDER}/")
+    print(f"  🚀 Videos delivered to: {DELIVERY_FOLDER}/")
     print(f"{'='*60}")
     
     if results['failed'] > 0:
