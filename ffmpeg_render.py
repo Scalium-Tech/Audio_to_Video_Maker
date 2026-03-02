@@ -7,7 +7,8 @@ Optimizations for parallel workers:
   - Internal rendering at 960×540 (4x less memory per frame)
   - FFmpeg upscales to 1920×1080 with Lanczos filter
   - Pre-allocated numpy frame buffer (no .copy() per frame)
-  - VideoToolbox hardware encoder (with libx264 fallback)
+  - HEVC (H.265) hardware encoder via VideoToolbox (~70% smaller files)
+  - Fallback chain: hevc_videotoolbox → h264_videotoolbox → libx264
   - Reusable overlay images (no Image.new() per frame)
 
 Features:
@@ -226,19 +227,28 @@ def _draw_progress_bar(draw, progress):
 
 
 # ─────────────────────────────────────────────────
-# VideoToolbox Detection
+# Encoder Detection (HEVC preferred)
 # ─────────────────────────────────────────────────
 
-def _has_videotoolbox():
-    """Check if h264_videotoolbox encoder is available."""
+def _detect_best_encoder():
+    """
+    Detect the best available hardware encoder.
+    Priority: hevc_videotoolbox > h264_videotoolbox > libx264
+    HEVC gives ~50-70% smaller files at same quality.
+    """
     try:
         result = subprocess.run(
             ["ffmpeg", "-hide_banner", "-encoders"],
             capture_output=True, text=True, timeout=5
         )
-        return "h264_videotoolbox" in result.stdout
+        encoders = result.stdout
+        if "hevc_videotoolbox" in encoders:
+            return "hevc_videotoolbox"
+        if "h264_videotoolbox" in encoders:
+            return "h264_videotoolbox"
     except Exception:
-        return False
+        pass
+    return "libx264"
 
 
 # ─────────────────────────────────────────────────
@@ -319,10 +329,12 @@ def render_with_ffmpeg(audio_path, lyrics_path, background_path, output_path):
     
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
-    # Detect encoder: prefer VideoToolbox hardware encoder
-    use_vtb = _has_videotoolbox()
-    encoder = "h264_videotoolbox" if use_vtb else "libx264"
-    print(f"  Encoder: {encoder} ({'hardware' if use_vtb else 'software'})")
+    # Detect best encoder: HEVC hardware > H.264 hardware > software
+    encoder = _detect_best_encoder()
+    is_hardware = "videotoolbox" in encoder
+    is_hevc = "hevc" in encoder
+    enc_label = f"{'HEVC' if is_hevc else 'H.264'} ({'hardware' if is_hardware else 'software'})"
+    print(f"  Encoder: {encoder} ({enc_label})")
     
     def _build_ffmpeg_cmd(enc):
         """Build FFmpeg command for the given encoder."""
@@ -336,13 +348,16 @@ def render_with_ffmpeg(audio_path, lyrics_path, background_path, output_path):
         # Video filter: upscale to output resolution
         cmd += ["-vf", f"scale={OUTPUT_W}:{OUTPUT_H}:flags=lanczos"]
         
-        if enc == "h264_videotoolbox":
-            cmd += ["-c:v", "h264_videotoolbox", "-b:v", "5M"]
+        if enc == "hevc_videotoolbox":
+            # HEVC hardware: ~70% smaller than H.264 @ 5M, same quality
+            cmd += ["-c:v", "hevc_videotoolbox", "-b:v", "2500k", "-tag:v", "hvc1"]
+        elif enc == "h264_videotoolbox":
+            cmd += ["-c:v", "h264_videotoolbox", "-b:v", "3M"]
         else:
             cmd += ["-c:v", "libx264", "-preset", "fast", "-crf", "23"]
         
         cmd += [
-            "-c:a", "aac", "-b:a", "192k",
+            "-c:a", "aac", "-b:a", "128k",
             "-t", str(duration), "-shortest",
             "-pix_fmt", "yuv420p",
             str(output_path)
@@ -419,14 +434,14 @@ def render_with_ffmpeg(audio_path, lyrics_path, background_path, output_path):
             return True
         else:
             stderr = proc.stderr.read().decode()[-500:]
-            # If VideoToolbox failed, retry with libx264
-            if use_vtb and proc.returncode != 0:
+            # If hardware encoder failed, retry with fallback
+            if is_hardware and proc.returncode != 0:
                 try:
                     proc.kill()
                 except Exception:
                     pass
-                print(f"  ⚠️  VideoToolbox failed, retrying with libx264...")
-                return _retry_with_libx264(audio_path, lyrics_path, background_path, output_path)
+                print(f"  ⚠️  {encoder} failed, retrying with software encoder...")
+                return _retry_with_software(audio_path, lyrics_path, background_path, output_path)
             print(f"  ❌ FFmpeg failed: {stderr}")
             return False
     
@@ -434,26 +449,25 @@ def render_with_ffmpeg(audio_path, lyrics_path, background_path, output_path):
         print(f"  ❌ Error: {e}")
         import traceback
         traceback.print_exc()
-        # Try fallback if VideoToolbox was used
-        if use_vtb:
+        # Try fallback if hardware encoder was used
+        if is_hardware:
             try:
                 proc.kill()
             except Exception:
                 pass
-            print(f"  ⚠️  Retrying with libx264...")
-            return _retry_with_libx264(audio_path, lyrics_path, background_path, output_path)
+            print(f"  ⚠️  Retrying with software encoder...")
+            return _retry_with_software(audio_path, lyrics_path, background_path, output_path)
         return False
 
 
-def _retry_with_libx264(audio_path, lyrics_path, background_path, output_path):
-    """Fallback: re-render using software libx264 if VideoToolbox failed."""
-    # Temporarily disable VideoToolbox detection
-    original_fn = _has_videotoolbox
+def _retry_with_software(audio_path, lyrics_path, background_path, output_path):
+    """Fallback: re-render using software libx264 if hardware encoder failed."""
+    original_fn = _detect_best_encoder
     try:
-        globals()['_has_videotoolbox'] = lambda: False
+        globals()['_detect_best_encoder'] = lambda: "libx264"
         return render_with_ffmpeg(audio_path, lyrics_path, background_path, output_path)
     finally:
-        globals()['_has_videotoolbox'] = original_fn
+        globals()['_detect_best_encoder'] = original_fn
 
 
 if __name__ == "__main__":
