@@ -53,3 +53,7 @@ venv/
 
 # Processed files
 done/
+
+# Logs and Reports
+*.log
+batch_processing_report.md

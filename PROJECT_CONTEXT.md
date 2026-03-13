@@ -65,21 +65,22 @@ python3.11 nemo_align.py input_songs/song.mp3 ground_truth_lyrics/song.mp3.txt
 
 ## 🚧 Current Work In Progress
 
-### Active Task: Performance Optimizations for 20 Parallel Workers — ✅ COMPLETE
-- **Status**: All optimizations implemented
+### Active Task: Batch Log Analysis & Scaling Plan — ✅ COMPLETE
+- **Status**: Completed log analysis of the massive 518-song batch. All songs successfully finished.
 - **What's done**:
-  - Half-res internal rendering (960×540 → 1080p upscale via FFmpeg Lanczos)
-  - Numpy pre-allocated frame buffers (no `.copy()` per frame)
-  - VideoToolbox hardware H.264 encoding (with libx264 fallback)
-  - Shared NeMo model server (loads once, serves all workers via queues)
-  - ThreadPoolExecutor + render semaphore (queue 20 jobs, limit FFmpeg to 6)
-  - New `--max-render-workers` CLI flag
-- **What's left**: None
-- **Blockers**: None
+  - Analyzed `pipeline.log` for error patterns (5,158 Gemini rate limits, 1,029 image retries).
+  - Verified that all 7 initially failed songs were successfully retried and are in `done/`.
+  - Created a detailed `batch_processing_report.md` artifact.
+  - Documented scaling strategies for 2,000+ files (API key rotation, NeMo timeouts).
+- **Previous**: Gemini Chunked Alignment (60-Second Fix).
+- **What's left**: None.
+- **Blockers**: None.
 
 ### Recent Changes Log
 | Date | What Changed | Files Modified |
 |---|---|---|
+| 2026-03-12 | Analyzed 518-song batch logs, generated performance report and scaling strategy | `PROJECT_CONTEXT.md` |
+| 2026-03-02 | Gemini chunked alignment: 60s chunks, VAD distribution, math import fix, smooth word gaps, validate/fix segments | `gemini_align.py` |
 | 2026-02-27 | Performance optimizations for 20 workers | `ffmpeg_render.py`, `nemo_server.py` [NEW], `nemo_align.py`, `batch_processor.py`, `main.py`, `start` |
 | 2026-02-27 | Bulk processing safeguards | `batch_processor.py` |
 | 2026-02-27 | NeMo alignment replacing WhisperX | `nemo_align.py` [NEW], `main.py`, `start` |
