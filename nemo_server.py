@@ -7,6 +7,11 @@ log-probability requests to all workers via multiprocessing queues.
 This saves ~500 MB RAM per worker since the model is only loaded once
 instead of once per parallel worker.
 
+Features:
+  - Health check: ping the server to verify it's responsive
+  - Auto-restart: if the server hangs, it is automatically restarted (up to 3 times)
+  - Increased timeouts: 300s startup, 300s per request (up from 120s)
+
 Usage:
     # Start server (usually done by batch_processor or start script):
     server = NemoModelServer()
@@ -29,12 +34,20 @@ import numpy as np
 from pathlib import Path
 from multiprocessing import Process, Queue, Event
 import multiprocessing
+import time
 
 
 # Sentinel values
 _SHUTDOWN = "__SHUTDOWN__"
+_HEALTH_CHECK = "__HEALTH_CHECK__"
 _SERVER_PID_FILE = Path(__file__).parent / "output_song" / ".nemo_server.pid"
 _SERVER_READY_FILE = Path(__file__).parent / "output_song" / ".nemo_server.ready"
+
+# Timeouts (seconds)
+SERVER_STARTUP_TIMEOUT = 300    # Time to wait for model to load (was 120s)
+CLIENT_REQUEST_TIMEOUT = 300    # Time to wait for a single inference request (was 120s)
+HEALTH_CHECK_TIMEOUT = 15       # Time to wait for health check response
+MAX_RESTARTS = 3                # Max auto-restart attempts before giving up
 
 
 def _convert_to_wav_simple(audio_path, output_wav):
@@ -54,6 +67,7 @@ def _server_loop(request_queue, response_queues_registry, ready_event, shutdown_
     """
     Main server loop. Runs in a dedicated process.
     Loads the model once, then serves log-prob requests.
+    Also responds to health check pings.
     """
     import torch
     from nemo.collections.asr.models import ASRModel
@@ -85,6 +99,13 @@ def _server_loop(request_queue, response_queues_registry, ready_event, shutdown_
             if request == _SHUTDOWN:
                 print("  [NeMo Server] Shutdown signal received.", flush=True)
                 break
+
+            # Health check: respond immediately with "ok"
+            if isinstance(request, tuple) and len(request) == 2 and request[1] == _HEALTH_CHECK:
+                worker_id = request[0]
+                if worker_id in response_queues_registry:
+                    response_queues_registry[worker_id].put({"status": "ok", "health": True})
+                continue
 
             worker_id, wav_path = request
 
@@ -135,6 +156,10 @@ class NemoModelServer:
     """
     Manages the NeMo model server process.
     Start this once before batch processing.
+    
+    Features:
+      - is_healthy(): ping the server to verify it's responsive
+      - ensure_alive(): auto-restart if unhealthy (up to MAX_RESTARTS times)
     """
 
     def __init__(self):
@@ -144,10 +169,17 @@ class NemoModelServer:
         self.ready_event = multiprocessing.Event()
         self.shutdown_event = multiprocessing.Event()
         self.process = None
+        self._restart_count = 0
+        self._health_queue = self._manager.Queue()
+        self.response_queues["__health__"] = self._health_queue
 
     def start(self):
         """Start the model server process."""
         print("  [NeMo Server] Starting...", flush=True)
+
+        # Reset events for fresh start
+        self.ready_event.clear()
+        self.shutdown_event.clear()
 
         self.process = Process(
             target=_server_loop,
@@ -161,15 +193,15 @@ class NemoModelServer:
         _SERVER_PID_FILE.parent.mkdir(parents=True, exist_ok=True)
         _SERVER_PID_FILE.write_text(str(self.process.pid))
 
-        # Wait for model to load
-        print("  [NeMo Server] Waiting for model to load...", flush=True)
-        self.ready_event.wait(timeout=120)
+        # Wait for model to load (increased to 300s)
+        print(f"  [NeMo Server] Waiting for model to load (timeout: {SERVER_STARTUP_TIMEOUT}s)...", flush=True)
+        self.ready_event.wait(timeout=SERVER_STARTUP_TIMEOUT)
 
         if self.ready_event.is_set():
             _SERVER_READY_FILE.touch()
             print("  [NeMo Server] Ready!", flush=True)
         else:
-            raise TimeoutError("NeMo server failed to start within 120s")
+            raise TimeoutError(f"NeMo server failed to start within {SERVER_STARTUP_TIMEOUT}s")
 
     def stop(self):
         """Stop the model server."""
@@ -187,6 +219,66 @@ class NemoModelServer:
                 f.unlink()
 
         print("  [NeMo Server] Stopped.", flush=True)
+
+    def is_healthy(self):
+        """
+        Send a health-check ping to the server and wait for a response.
+        Returns True if the server responds within HEALTH_CHECK_TIMEOUT seconds.
+        """
+        if not self.process or not self.process.is_alive():
+            return False
+
+        try:
+            # Drain any stale health responses
+            while not self._health_queue.empty():
+                try:
+                    self._health_queue.get_nowait()
+                except Exception:
+                    break
+
+            # Send health check request
+            self.request_queue.put(("__health__", _HEALTH_CHECK))
+
+            # Wait for response
+            response = self._health_queue.get(timeout=HEALTH_CHECK_TIMEOUT)
+            return response.get("health", False)
+        except Exception:
+            return False
+
+    def ensure_alive(self):
+        """
+        Check if the server is healthy. If not, attempt to restart it.
+        Returns True if server is alive (or was successfully restarted).
+        Returns False if all restart attempts have been exhausted.
+        """
+        if self.is_healthy():
+            return True
+
+        if self._restart_count >= MAX_RESTARTS:
+            print(f"  [NeMo Server] ❌ Max restarts ({MAX_RESTARTS}) reached. Giving up on auto-restart.", flush=True)
+            return False
+
+        self._restart_count += 1
+        print(f"  [NeMo Server] ⚠️  Server unresponsive. Auto-restarting... (attempt {self._restart_count}/{MAX_RESTARTS})", flush=True)
+
+        try:
+            self.stop()
+        except Exception:
+            pass
+
+        # Brief pause before restart
+        time.sleep(2)
+
+        try:
+            # Create fresh events and queues
+            self.ready_event = multiprocessing.Event()
+            self.shutdown_event = multiprocessing.Event()
+            self.start()
+            print(f"  [NeMo Server] ✅ Restart successful (attempt {self._restart_count})", flush=True)
+            return True
+        except Exception as e:
+            print(f"  [NeMo Server] ❌ Restart failed: {e}", flush=True)
+            return False
 
     def create_client(self, worker_id=None):
         """Create a client for a worker process."""
@@ -213,7 +305,7 @@ class NemoModelClient:
         self.response_queue = response_queue
         self.worker_id = worker_id
 
-    def get_log_probs(self, wav_path, timeout=120):
+    def get_log_probs(self, wav_path, timeout=CLIENT_REQUEST_TIMEOUT):
         """
         Send a WAV file to the server and get back log-probabilities.
 

@@ -76,11 +76,25 @@ lyricflow/
 
 ## 🛠️ Requirements & Setup
 
-1.  **Python 3.11**: `brew install python@3.11`
-2.  **NeMo**: `pip3.11 install nemo_toolkit[asr]`
-3.  **Environment**: Create `.env` with `GEMINI_API_KEY=your_key`
-4.  **Node.js**: `cd video && npm install`
-5.  **FFmpeg**: `brew install ffmpeg`
+1.  **Python 3.11**: Required for NeMo alignment.
+2.  **Dependencies**: `pip install -r requirements.txt` (includes `wakepy` for sleep prevention).
+3.  **Environment**: Copy `.env.example` to `.env` and add your `GEMINI_API_KEY`.
+4.  **FFmpeg**: Required for video rendering.
+5.  **Rclone**: Required for Google Drive sync.
+
+### 🏁 One-Click Setup (New!)
+On a new machine, simply run:
+```bash
+python setup_check.py
+```
+This will verify your Python version, FFmpeg, Rclone, and automatically create your folders and `.env` file.
+
+### 🚀 Running the Pipeline
+Instead of the old Mac shell script, use the universal launcher:
+```bash
+python start.py
+```
+*This works the same on Windows, Mac, and Linux.*
 
 ---
 

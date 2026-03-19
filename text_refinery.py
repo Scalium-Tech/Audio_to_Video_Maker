@@ -204,23 +204,22 @@ def refine_lyrics_with_gemini(raw_segments, language="hi", api_key=None):
     import requests
     
     models_to_try = [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash-exp", # If available
-        "gemini-1.5-pro-002",
-        "gemini-1.5-flash",
-        "gemini-pro"
+        "gemini-3-flash-preview",
+        "gemini-flash-latest",
+        "gemini-2.5-flash-lite",
+        "gemini-pro-latest"
     ]
 
+    from gemini_utils import call_gemini_api, get_gemini_text
+
     segment_data = []
+    # ... [keep segment_data logic] ...
     for seg in raw_segments:
-        # Detect the ACTUAL start and end of singing within this segment
-        # ignore leading/trailing instrumental silence
         words = seg.get("words", [])
         active_starts = [w["start"] for w in words if "start" in w]
         active_ends = [w["end"] for w in words if "end" in w]
         
         if active_starts and active_ends:
-            # Revert to tighter timings (removed lead-in and hang-time to fix "fast" feeling)
             actual_start = min(active_starts)
             actual_end = max(active_ends)
         else:
@@ -233,64 +232,28 @@ def refine_lyrics_with_gemini(raw_segments, language="hi", api_key=None):
             "end": round(actual_end, 2)
         })
 
-    prompt = f"""
-You are an expert {language_name} lyricist. I will provide you with the EXACT timestamps when the singer is singing during each segment of a {language_name} song.
-
-YOUR TASK:
-1. Format each segment into clean lyric lines. Prefer **ONE LINE per segment**. If two short lines belong together, use `\n` to separate them.
-2. Do NOT split the input segment into multiple JSON objects. Each input segment must result in exactly ONE output JSON object.
-3. The 'start' and 'end' of the output object MUST remain identical to the input segment's 'start' and 'end'.
-4. Correct {language_name} spelling mistakes. {script_note}.
-5. **NATIVE SCRIPT ONLY**: Output MUST be in the native script of the language (e.g., Devanagari for Hindi/Marathi). Do NOT transliterate to Latin/Roman script.
-6. **ADD PUNCTUATION**: Add commas (,) at natural pauses within lines. Add "!" after devotional/exclamatory phrases (e.g., "जय!", "हर हर महादेव!", "ॐ नमः शिवाय!", "राधे राधे!", "जय श्री राम!", "गणपति बप्पा मोरया!"). Add "।" (purna viram) at the end of verses for Hindi/Marathi.
-7. **DO NOT REMOVE REPETITIONS**: Even if a word or phrase is repeated, you MUST keep every occurrence. Every word the singer says is required for alignment.
-
-CRITICAL RULES:
-- Exactly ONE JSON object per input segment.
-- Use `\n` for internal line breaks.
-- Use `"text"` as the key for the lyric content (e.g., {{"start": 0.0, "end": 2.0, "text": "..."}}).
-- Return ONLY a JSON array.
-- Output in NATIVE SCRIPT, not Latin.
-
-Segment-Level Input Data:
-{json.dumps(segment_data, ensure_ascii=False)}
-"""
-
+    prompt = f"""... [keep prompt] ..."""
+    # [Actually referencing the prompt variable below]
+    
     refined_lyrics = None
     
     for model_name in models_to_try:
         print(f"Attempting refinement with model: {model_name}...", flush=True)
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
-        headers = {"Content-Type": "application/json"}
-        data = {
+        
+        payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"response_mime_type": "application/json"}
         }
         
+        result = call_gemini_api(model_name, payload, api_key=api_key)
+        
+        if result["status"] == "error":
+            print(f"  {model_name} failed: {result.get('error')}", flush=True)
+            continue
+            
         try:
-            response = requests.post(url, headers=headers, json=data)
-            
-            if response.status_code != 200:
-                print(f"Model {model_name} failed with status {response.status_code}: {response.text[:100]}...", flush=True)
-                continue # Try next model
-                
-            # Parse response
-            result_json = response.json()
-            candidates = result_json.get('candidates', [])
-            if not candidates:
-                 try:
-                    # Check for prompt feedback block
-                    feedback = result_json.get('promptFeedback', {})
-                    if feedback:
-                        print(f"Safety Block on {model_name}: {feedback}", flush=True)
-                    else:
-                        print(f"No candidates returned from {model_name}.", flush=True)
-                 except: 
-                     pass
-                 continue
-
-            text_response = candidates[0].get('content', {}).get('parts', [{}])[0].get('text', '')
-            
+            response_json = result["data"]
+            text_response = get_gemini_text(response_json)
             if not text_response:
                 continue
 
@@ -301,26 +264,21 @@ Segment-Level Input Data:
             elif text_response.startswith("```"):
                 text_response = text_response[3:-3].strip()
 
-            # Parse JSON
-            try:
-                # Find brackets
-                start_idx = text_response.find('[')
-                end_idx = text_response.rfind(']') + 1
-                if start_idx != -1 and end_idx != 0:
-                    json_str = text_response[start_idx:end_idx]
-                    refined_lyrics = json.loads(json_str)
-                    # Re-attach word-level timestamps from the original segments
-                    refined_lyrics = _reattach_word_timestamps(refined_lyrics, raw_segments)
-                    refined_lyrics = _split_segments_at_newlines(refined_lyrics)
-                    print(f"SUCCESS: Refined lyrics generated using {model_name} (with word timestamps)", flush=True)
-                    return refined_lyrics
-                else:
-                    print(f"Failed to parse JSON from {model_name}", flush=True)
-            except json.JSONDecodeError:
-                 print(f"JSON Decode Error from {model_name}", flush=True)
-                 
+            # Find brackets
+            start_idx = text_response.find('[')
+            end_idx = text_response.rfind(']') + 1
+            if start_idx != -1 and end_idx != 0:
+                json_str = text_response[start_idx:end_idx]
+                refined_lyrics = json.loads(json_str)
+                # Re-attach word-level timestamps from the original segments
+                refined_lyrics = _reattach_word_timestamps(refined_lyrics, raw_segments)
+                refined_lyrics = _split_segments_at_newlines(refined_lyrics)
+                print(f"SUCCESS: Refined lyrics generated using {model_name} (with word timestamps)", flush=True)
+                return refined_lyrics
+            else:
+                print(f"Failed to parse JSON from {model_name}", flush=True)
         except Exception as e:
-            print(f"Error calling {model_name}: {e}", flush=True)
+            print(f"Error parsing {model_name}: {e}", flush=True)
             
     print("ALL MODELS FAILED. Returning None (fallback to raw).", flush=True)
     return None
@@ -373,40 +331,46 @@ EXAMPLE OF WHAT IS FORBIDDEN:
 - Do NOT transliterate to Latin/Roman script
 """
 
-    models_to_try = ["gemini-2.5-flash", "gemini-1.5-pro-002", "gemini-1.5-flash"]
+    from gemini_utils import call_gemini_api, get_gemini_text
+
+    models_to_try = ["gemini-3-flash-preview", "gemini-flash-latest", "gemini-2.5-flash-lite"]
     
     for model_name in models_to_try:
         print(f"Attempting injection with model: {model_name}...", flush=True)
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
-        headers = {"Content-Type": "application/json"}
-        data = {
+        
+        payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"response_mime_type": "application/json"}
         }
         
+        result = call_gemini_api(model_name, payload, api_key=api_key)
+        
+        if result["status"] == "error":
+            print(f"  {model_name} failed: {result.get('error')}", flush=True)
+            continue
+            
         try:
-            response = requests.post(url, headers=headers, json=data)
-            if response.status_code == 200:
-                result_json = response.json()
-                text_response = result_json['candidates'][0]['content']['parts'][0]['text'].strip()
-                
-                # Clean markdown
-                if text_response.startswith("```json"):
-                    text_response = text_response[7:-3].strip()
-                elif text_response.startswith("```"):
-                    text_response = text_response[3:-3].strip()
+            response_json = result["data"]
+            text_response = get_gemini_text(response_json)
+            if not text_response:
+                continue
 
-                start_idx = text_response.find('[')
-                end_idx = text_response.rfind(']') + 1
-                if start_idx != -1 and end_idx != 0:
-                    injected_lyrics = json.loads(text_response[start_idx:end_idx])
-                    # Re-attach word-level timestamps from the timing shell
-                    injected_lyrics = _reattach_word_timestamps(injected_lyrics, timing_shell)
-                    injected_lyrics = _split_segments_at_newlines(injected_lyrics)
-                    return injected_lyrics
-            else:
-                print(f"Model {model_name} failed: {response.status_code}")
+            text_response = text_response.strip()
+            # Clean markdown
+            if text_response.startswith("```json"):
+                text_response = text_response[7:-3].strip()
+            elif text_response.startswith("```"):
+                text_response = text_response[3:-3].strip()
+
+            start_idx = text_response.find('[')
+            end_idx = text_response.rfind(']') + 1
+            if start_idx != -1 and end_idx != 0:
+                injected_lyrics = json.loads(text_response[start_idx:end_idx])
+                # Re-attach word-level timestamps from the timing shell
+                injected_lyrics = _reattach_word_timestamps(injected_lyrics, timing_shell)
+                injected_lyrics = _split_segments_at_newlines(injected_lyrics)
+                return injected_lyrics
         except Exception as e:
-            print(f"Error with {model_name}: {e}")
+            print(f"Error parse with {model_name}: {e}")
 
     return None

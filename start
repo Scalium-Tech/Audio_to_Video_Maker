@@ -7,9 +7,19 @@
 #  2. Drop matching .txt files into ground_truth_lyrics/
 #  3. Run: ./start
 #
-#  Performance flags:
+#  Performance & Flow flags:
 #    --workers 20             Total parallel job slots
 #    --max-render-workers 6   Max concurrent FFmpeg encodes
+#    --max-retries 3          Max retry attempts for failed songs (default: 3)
+#    --dry-run                Validate only, don't process any songs
+#    --skip-normalize         Skip audio normalization pre-processing
+#    --process-pool           Use ProcessPoolExecutor for true parallelism
+#    --pipeline               Pipeline mode: overlap alignment and rendering
+#    --preview                Render only first 15s for QA preview
+#    --start-at HH:MM         Schedule start time
+#    --multi-machine          Enable file-based multi-machine queueing
+#    --no-date-folders        Don't put output in date-based subfolders
+#    --no-health              Disable the background health check HTTP server
 # ============================================================
 
 set -e
@@ -56,6 +66,15 @@ echo "   • Internal rendering at 960×540 (4x less memory)"
 echo "   • VideoToolbox hardware encoding (if available)"
 echo "   • Shared NeMo model server (loaded once)"
 echo "   • Semaphore-limited concurrent renders"
+echo "   • Multi-key Gemini API round robin (if GEMINI_API_KEYS set)"
+echo "   • NeMo server auto-restart on hang"
+echo "   • Automated retry loop for failed songs"
+echo "   • Audio normalization (loudnorm -16 LUFS)"
+echo "   • Duplicate MP3 detection (hash-based dedup)"
+echo "   • Queue prioritization (partial songs first)"
+echo "   • Memory-aware scaling (pauses if >80% RAM)"
+echo "   • Gemini response caching (disk-based dedup)"
+echo "   • Batch analytics HTML report"
 echo ""
 
 # Ensure folders exist
@@ -67,20 +86,94 @@ LOG_FILE="output_song/pipeline.log"
 echo "📝 Logging to: $LOG_FILE"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
-# Run the batch processor (safe to fail without killing script)
-set +e
-$PYTHON batch_processor.py "$@"
-EXIT_CODE=$?
-set -e
+# ── Parse --max-retries from arguments ──
+MAX_RETRIES=3
+DRY_RUN=false
+REMAINING_ARGS=()
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --max-retries)
+            MAX_RETRIES="$2"
+            shift 2
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            REMAINING_ARGS+=("--dry-run")
+            shift
+            ;;
+        *)
+            REMAINING_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
 
-# Cleanup NeMo server PID files if they exist
-rm -f output_song/.nemo_server.pid output_song/.nemo_server.ready
+if [ "$DRY_RUN" = true ]; then
+    echo "🔍 DRY RUN mode — validating only"
+else
+    echo "🔄 Max retries: $MAX_RETRIES"
+fi
+echo ""
+
+# ── Dry-run shortcut (no retry loop) ──
+if [ "$DRY_RUN" = true ]; then
+    caffeinate -i $PYTHON batch_processor.py "${REMAINING_ARGS[@]}"
+    exit $?
+fi
+
+# ── Retry Loop ──
+# After each run, check if input_songs/ still has MP3 files.
+# If yes AND the run had failures, wait 30s and re-run automatically.
+ATTEMPT=0
+while true; do
+    ATTEMPT=$((ATTEMPT + 1))
+
+    if [ "$ATTEMPT" -gt 1 ]; then
+        echo ""
+        echo "╔══════════════════════════════════════════════════════╗"
+        echo "║   🔄 RETRY ATTEMPT $ATTEMPT / $MAX_RETRIES                         ║"
+        echo "╚══════════════════════════════════════════════════════╝"
+        echo ""
+    fi
+
+    # Run the batch processor with caffeinate to prevent system sleep
+    set +e
+    caffeinate -i $PYTHON batch_processor.py "${REMAINING_ARGS[@]}"
+    EXIT_CODE=$?
+    set -e
+
+    # Cleanup NeMo server PID files if they exist
+    rm -f output_song/.nemo_server.pid output_song/.nemo_server.ready
+
+    # Check if there are still MP3 files left to process
+    REMAINING_MP3=$(find input_songs -name "*.mp3" 2>/dev/null | wc -l | tr -d ' ')
+
+    # If no failures or no remaining files, we're done
+    if [ "$EXIT_CODE" -eq 0 ] || [ "$REMAINING_MP3" -eq 0 ]; then
+        break
+    fi
+
+    # If we've exhausted retries, stop
+    if [ "$ATTEMPT" -ge "$MAX_RETRIES" ]; then
+        echo ""
+        echo "⚠️  Max retries ($MAX_RETRIES) reached. $REMAINING_MP3 MP3 file(s) still in input_songs/."
+        echo "   Run ./start again to retry them manually."
+        break
+    fi
+
+    # Wait before retrying
+    echo ""
+    echo "⚠️  $REMAINING_MP3 MP3 file(s) still in input_songs/ after run $ATTEMPT."
+    echo "   Waiting 30s before retry attempt $((ATTEMPT + 1))..."
+    sleep 30
+done
 
 echo ""
-if [ "$EXIT_CODE" -ne 0 ]; then
+if [ "$EXIT_CODE" -ne 0 ] && [ "$REMAINING_MP3" -gt 0 ]; then
     echo "╔══════════════════════════════════════════════════════╗"
     echo "║    ❌ Pipeline finished with errors (exit $EXIT_CODE)     ║"
-    echo "║    Check output_song/benchmark.csv for details      ║"
+    echo "║    $REMAINING_MP3 song(s) still need processing          ║"
+        echo "║    Check dashboard_data/benchmark.csv for details   ║"
     echo "╚══════════════════════════════════════════════════════╝"
     exit $EXIT_CODE
 fi

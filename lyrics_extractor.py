@@ -15,6 +15,29 @@ import re
 import os
 import json
 
+ALLOWED_PUNCTUATION = set(" \t,!?।॥….-")
+
+
+def sanitize_lyrics_text(raw_text: str) -> str:
+    """
+    Enforce display-safe lyric text.
+
+    Rules:
+    - remove bracketed/parenthetical content
+    - remove English letters, digits, and metadata symbols
+    - keep only Devanagari text plus basic punctuation/spacing
+    """
+    if not raw_text or not raw_text.strip():
+        return ""
+
+    clean_lines = []
+    for raw_line in raw_text.splitlines():
+        line = _sanitize_lyric_line(raw_line)
+        if line:
+            clean_lines.append(line)
+
+    return "\n".join(clean_lines)
+
 
 def extract_lyrics_from_text(raw_text: str) -> str:
     """
@@ -72,18 +95,11 @@ def extract_lyrics_from_text(raw_text: str) -> str:
         if not _has_devanagari(line):
             continue
         
-        # Remove any inline section markers: [Verse 1] text here → text here
-        line = re.sub(r'\[.*?\]\s*', '', line).strip()
-        
-        # Remove inline parenthetical directions
-        line = re.sub(r'\(.*?\)', '', line).strip()
-        
+        line = _sanitize_lyric_line(line)
         if line:
             clean_lines.append(line)
     
-    result = "\n".join(clean_lines)
-    
-    return result
+    return "\n".join(clean_lines)
 
 
 def _extract_suno_lyrics_section(lines: list) -> list | None:
@@ -125,6 +141,32 @@ def _has_devanagari(text: str) -> bool:
     return bool(re.search(r'[\u0900-\u097F]', text))
 
 
+def _sanitize_lyric_line(line: str) -> str:
+    """Strip a lyric line down to Devanagari-only display text."""
+    if not line:
+        return ""
+
+    line = re.sub(r'\[.*?\]', ' ', line)
+    line = re.sub(r'\(.*?\)', ' ', line)
+    line = re.sub(r'\{.*?\}', ' ', line)
+
+    filtered = []
+    for ch in line:
+        if '\u0900' <= ch <= '\u097F' or ch in ALLOWED_PUNCTUATION:
+            filtered.append(ch)
+        elif ch.isspace():
+            filtered.append(" ")
+
+    line = "".join(filtered)
+    line = re.sub(r'\s+', ' ', line).strip()
+    line = re.sub(r'\s+([,!?।॥….-])', r'\1', line)
+    line = re.sub(r'([,!?।॥….-]){2,}', r'\1', line)
+
+    if not _has_devanagari(line):
+        return ""
+    return line
+
+
 
 
 
@@ -154,108 +196,104 @@ def add_punctuation_with_gemini(lyrics_text: str, api_key: str = None) -> str:
     lines = lyrics_text.strip().split("\n")
     total = len(lines)
     
-    # Number each line so Gemini preserves them all
-    numbered = "\n".join([f"L{i+1}: {line}" for i, line in enumerate(lines)])
+    numbered = lyrics_text.strip()
     
-    prompt = f"""You are a Hindi/Devanagari punctuation expert. Add punctuation to these lyrics.
+    prompt = f"""Task: Correct punctuation and capitalization for the following Hindi lyrics.
+Stay 100% faithful to the text. ONLY add punctuation (।, !, ?, ,).
+Output the result as a JSON array of strings, where each string is ONE line.
+Keep exactly {total} lines in the array.
 
-RULES:
-- DO NOT change any words, spelling, or order
-- DO NOT add or remove any lines
-- DO NOT transliterate — keep everything in Devanagari
-- There are exactly {total} lines. Output exactly {total} lines.
-- Only ONE punctuation mark per position (never combine like !,)
-
-PUNCTUATION TO ADD:
-- , (comma) at natural pauses within a line
-- ! after exclamatory/devotional phrases like जय, हर हर महादेव, ॐ नमः शिवाय, राधे राधे, गणपति बप्पा मोरया, भोलेनाथ, etc.
-- । (purna viram) at the end of complete verses/sentences
-
-INPUT LYRICS ({total} lines):
+Lyrics:
 {numbered}
-
-Return ONLY a JSON array of {total} strings, one per line, in the same order:
-["line1 with punctuation", "line2 with punctuation", ...]
 
 Return ONLY the JSON array:"""
     
-    models = ["gemini-2.5-flash", "gemini-2.0-flash"]
+    from gemini_utils import call_gemini_api, get_gemini_text
+    
+    models = ["gemini-2.5-flash", "gemini-flash-latest"]
     
     for model_name in models:
         print(f"  Adding punctuation with {model_name}...", flush=True)
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
         
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 8192}
+            "generationConfig": {
+                "maxOutputTokens": 4096,
+                "temperature": 0.1,
+                "response_mime_type": "application/json"
+            }
         }
         
+        result = call_gemini_api(model_name, payload, api_key=api_key, pool="punctuation")
+        
+        if result["status"] == "error":
+            print(f"  {model_name} failed: {result.get('error')}", flush=True)
+            continue
+            
+        # Parse JSON array
         try:
-            response = requests.post(url, json=payload, timeout=60)
-            if response.status_code != 200:
-                print(f"  {model_name}: HTTP {response.status_code}", flush=True)
-                continue
-            
-            result = response.json()
-            parts = result["candidates"][0]["content"]["parts"]
-            all_texts = [p["text"] for p in parts if "text" in p]
-            text_response = all_texts[-1] if all_texts else ""
-            
+            response_json = result["data"]
+            text_response = get_gemini_text(response_json)
             if not text_response:
                 continue
-            
-            # Parse JSON array
+                
+            # Try direct JSON parse first
             try:
                 data = json.loads(text_response.strip())
             except json.JSONDecodeError:
-                stripped = text_response.replace("```json", "").replace("```", "").strip()
-                try:
-                    data = json.loads(stripped)
-                except json.JSONDecodeError:
-                    s, e = stripped.find("["), stripped.rfind("]")
-                    if s >= 0 and e > s:
-                        data = json.loads(stripped[s:e+1])
-                    else:
-                        print(f"  {model_name}: No JSON found", flush=True)
-                        continue
-            
-            if not isinstance(data, list):
-                print(f"  {model_name}: Response is not an array", flush=True)
-                continue
-            
-            # Validate: must have same number of lines
-            if len(data) != total:
-                print(f"  {model_name}: Got {len(data)} lines, expected {total}. Using best effort.", flush=True)
-                if len(data) < total:
-                    data.extend(lines[len(data):])
+                # Try extracting JSON array from response
+                s_idx = text_response.find("[")
+                e_idx = text_response.rfind("]")
+                if s_idx != -1 and e_idx != -1 and e_idx > s_idx:
+                    data = json.loads(text_response[s_idx:e_idx+1])
                 else:
-                    data = data[:total]
+                    raise
+        except:
+            # Final fallback: just split lines if no JSON found
+            print(f"  {model_name}: No JSON array found. Trying fallback parse.", flush=True)
+            try:
+                s, e = text_response.find("["), text_response.rfind("]")
+                if s != -1 and e > s:
+                    data = json.loads(text_response[s:e+1])
+                else:
+                    continue
+            except:
+                continue
+        
+        # --- Process Successful Data ---
+        if not isinstance(data, list):
+            continue
             
-            # Clean double punctuation from each line
-            cleaned = []
-            for line in data:
-                line = str(line)
-                line = line.replace("!,", "!").replace(",!", "!")
-                line = line.replace(",।", "।").replace("।,", "।")
-                cleaned.append(line)
+        # Validate: same number of lines
+        if len(data) != total:
+            print(f"  {model_name}: Got {len(data)} lines, expected {total}. Normalizing.", flush=True)
+            if len(data) < total:
+                data.extend(lines[len(data):])
+            else:
+                data = data[:total]
+        
+        # Clean and Split
+        final_lines = []
+        for line in data:
+            line = str(line).strip()
+            line = line.replace("!,", "!").replace(",!", "!")
+            line = line.replace(",।", "।").replace("।,", "।")
             
-            result_text = "\n".join(cleaned)
-            print(f"  SUCCESS: Punctuated {total} lines with {model_name}", flush=True)
+            # Split after: ।, ,, !, ?
+            temp_text = line
+            for punc in ["।", ",", "!", "?"]:
+                temp_text = temp_text.replace(punc, punc + "SPLIT_HERE")
             
-            # Show sample
-            for i, (orig, punct) in enumerate(zip(lines[:3], cleaned[:3])):
-                if orig != punct:
-                    print(f"    L{i+1}: \"{orig}\" -> \"{punct}\"")
-            
-            return result_text
-            
-        except json.JSONDecodeError as e:
-            print(f"  {model_name}: JSON parse error: {e}", flush=True)
-        except Exception as e:
-            print(f"  {model_name}: Error: {e}", flush=True)
+            for s in temp_text.split("SPLIT_HERE"):
+                s = s.strip()
+                if s:
+                    final_lines.append(s)
+        
+        print(f"  ✅ SUCCESS: {model_name} punctuated lyrics.", flush=True)
+        return sanitize_lyrics_text("\n".join(final_lines))
     
-    print("  All models failed. Returning lyrics without punctuation.", flush=True)
-    return lyrics_text
+    print("  All models failed to punctuate. Returning original.", flush=True)
+    return sanitize_lyrics_text(lyrics_text)
 
 
 # --- CLI ---

@@ -6,11 +6,23 @@ word-level timestamps. Used as fallback when NeMo alignment is unavailable.
 """
 
 import os
+import sys
 import json
 import re
+import math
 import base64
 import argparse
 from pathlib import Path
+
+_PIPELINE_ROOT = str(Path(__file__).parent.parent)
+if _PIPELINE_ROOT not in sys.path:
+    sys.path.insert(0, _PIPELINE_ROOT)
+
+try:
+    from failure_evidence import save_error_context
+    _HAS_EVIDENCE = True
+except ImportError:
+    _HAS_EVIDENCE = False
 
 def align_lyrics_with_gemini(audio_path, lyrics_segments, api_key=None):
     """
@@ -74,16 +86,16 @@ Example format:
 
 Return ONLY the JSON array:"""
 
+    from gemini_utils import call_gemini_api
+
     # Try multiple models
     models = [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
+        "gemini-3-flash-preview",
+        "gemini-flash-latest",
     ]
     
     for model_name in models:
         print(f"  Attempting forced alignment with {model_name}...", flush=True)
-        
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
         
         payload = {
             "contents": [{
@@ -103,17 +115,16 @@ Return ONLY the JSON array:"""
             }
         }
         
+        result = call_gemini_api(model_name, payload, api_key=api_key, pool="alignment")
+        
+        if result["status"] == "error":
+            print(f"  {model_name} failed: {result.get('error')}", flush=True)
+            continue
+            
         try:
-            response = requests.post(url, json=payload, timeout=180)
-            
-            if response.status_code != 200:
-                print(f"  {model_name} failed: HTTP {response.status_code}", flush=True)
-                continue
-            
-            result = response.json()
-            
-            # Gemini 2.5 Flash may return multiple parts (thinking + text)
-            parts = result["candidates"][0]["content"]["parts"]
+            response_json = result["data"]
+            # Gemini may return multiple parts (thinking + text)
+            parts = response_json["candidates"][0]["content"]["parts"]
             text_response = ""
             for part in parts:
                 if "text" in part:
@@ -133,7 +144,6 @@ Return ONLY the JSON array:"""
             
             if start_idx == -1 or end_idx == 0:
                 print(f"  {model_name}: No JSON array found in response", flush=True)
-                print(f"  Response preview: {clean[:200]}...", flush=True)
                 continue
             
             json_str = clean[start_idx:end_idx]
@@ -195,6 +205,15 @@ Return ONLY the JSON array:"""
             print(f"  {model_name}: Error: {e}", flush=True)
     
     print("  All models failed for forced alignment. Keeping original timestamps.", flush=True)
+    if _HAS_EVIDENCE:
+        try:
+            save_error_context(
+                Path(audio_path).stem, "gemini_align/word_level",
+                "All Gemini models failed for forced alignment",
+                extra={"n_segments": len(lyrics_segments),
+                       "models_tried": ["gemini-3-flash-preview", "gemini-flash-latest"]})
+        except Exception:
+            pass
     return lyrics_segments
 
 
@@ -268,128 +287,262 @@ def full_pipeline_gemini(audio_path, ground_truth_text, api_key=None):
     
     vad_info = "\n".join([f"  Speech: {s['start']:.1f}s - {s['end']:.1f}s" for s in speech_segments])
     
-    # ── Step 3: Gemini with VAD hints ──
-    print(f"  Step 2: Gemini alignment ({total_lines} lyric lines)...", flush=True)
+    # ── Step 3: Chunked Gemini alignment ──
+    # Gemini loses accuracy after ~60s, so we split into chunks
+    CHUNK_DURATION = 60.0  # seconds per chunk
     
     audio_bytes = audio_path.read_bytes()
-    audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
     ext = audio_path.suffix.lower()
     mime_type = {".mp3": "audio/mpeg", ".wav": "audio/wav", ".m4a": "audio/mp4"}.get(ext, "audio/mpeg")
     
-    prompt = f"""I have an audio file and {total_lines} lines of lyrics. Your job:
-1. Add TIMESTAMPS for EVERY line (when it is sung)
-2. Add PUNCTUATION (, ! ।) to the words
-
-AUDIO DURATION: {audio_duration:.1f} seconds
-
-SPEECH REGIONS (singing happens ONLY here):
-{vad_info}
-
-LYRICS — there are exactly {total_lines} lines. You MUST output a segment for EVERY line:
-{numbered_text}
-
-OUTPUT FORMAT — JSON array with exactly {total_lines} segments (plus silent gaps):
-{{"text": "line with punctuation", "start": X.XX, "end": X.XX, "words": [{{"word": "word,", "start": X.XX, "end": X.XX}}]}}
-
-CRITICAL:
-- You MUST output ALL {total_lines} lines. Do NOT skip any line.
-- L1 through L{total_lines} must ALL appear in your output.
-- ONE line per segment, in order
-- ALL timestamps between 0 and {audio_duration:.1f}, within speech regions
-- Add "," for pauses, "!" for exclamations/chants, "।" at verse ends
-- Include punctuation IN the word (e.g. "भोलेनाथ!," not "भोलेनाथ")
-- Return ONLY the JSON array"""
-
-    models = ["gemini-2.5-flash", "gemini-2.0-flash"]
+    # Calculate number of chunks
+    n_chunks = max(1, int(math.ceil(audio_duration / CHUNK_DURATION)))
     
-    for model_name in models:
-        print(f"  Trying {model_name}...", flush=True)
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+    # Distribute lyrics across chunks based on VAD speech regions
+    # Calculate how much speech time is in each chunk
+    chunk_boundaries = []
+    for c in range(n_chunks):
+        c_start = c * CHUNK_DURATION
+        c_end = min((c + 1) * CHUNK_DURATION, audio_duration)
+        # Count speech time in this chunk
+        speech_time = 0
+        for sp in speech_segments:
+            overlap_start = max(c_start, sp["start"])
+            overlap_end = min(c_end, sp["end"])
+            if overlap_end > overlap_start:
+                speech_time += overlap_end - overlap_start
+        chunk_boundaries.append({"start": c_start, "end": c_end, "speech_time": speech_time})
+    
+    # Distribute lines proportionally to speech time per chunk
+    total_speech = sum(cb["speech_time"] for cb in chunk_boundaries)
+    if total_speech <= 0:
+        total_speech = audio_duration
+    
+    line_cursor = 0
+    for cb in chunk_boundaries:
+        proportion = cb["speech_time"] / total_speech
+        n_lines = max(1, round(total_lines * proportion))
+        cb["line_start"] = line_cursor
+        cb["line_end"] = min(line_cursor + n_lines, total_lines)
+        line_cursor = cb["line_end"]
+    # Ensure last chunk gets remaining lines
+    if chunk_boundaries:
+        chunk_boundaries[-1]["line_end"] = total_lines
+    
+    print(f"  Step 2: Chunked Gemini alignment ({n_chunks} chunks, {total_lines} lines)...", flush=True)
+    for cb in chunk_boundaries:
+        n = cb["line_end"] - cb["line_start"]
+        print(f"    Chunk [{cb['start']:.0f}s-{cb['end']:.0f}s]: {n} lines (speech: {cb['speech_time']:.1f}s)", flush=True)
+    
+    # Process each chunk
+    import subprocess as sp_mod, tempfile
+    all_segments = []
+    
+    for chunk_idx, cb in enumerate(chunk_boundaries):
+        c_start = cb["start"]
+        c_end = cb["end"]
+        c_lines_start = cb["line_start"]
+        c_lines_end = cb["line_end"]
+        chunk_lines = clean_lines[c_lines_start:c_lines_end]
         
-        payload = {
-            "contents": [{"parts": [
-                {"inlineData": {"mimeType": mime_type, "data": audio_b64}},
-                {"text": prompt}
-            ]}],
-            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 65536}
-        }
+        if not chunk_lines:
+            continue
+        
+        n_chunk_lines = len(chunk_lines)
+        
+        # Extract audio chunk as WAV using ffmpeg
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            tmp_path = tmp.name
         
         try:
-            response = requests.post(url, json=payload, timeout=300)
-            if response.status_code != 200:
-                print(f"  {model_name}: HTTP {response.status_code}", flush=True)
-                continue
+            sp_mod.run([
+                "ffmpeg", "-y", "-i", str(audio_path),
+                "-ss", str(c_start), "-to", str(c_end),
+                "-ac", "1", "-ar", "16000", "-acodec", "pcm_s16le",
+                tmp_path
+            ], capture_output=True, timeout=30)
             
-            result = response.json()
-            parts = result["candidates"][0]["content"]["parts"]
-            all_texts = [p["text"] for p in parts if "text" in p]
-            text_response = all_texts[-1] if all_texts else ""
-            
-            if not text_response:
-                continue
-            
-            # Parse JSON
-            try:
-                data = json.loads(text_response.strip())
-            except json.JSONDecodeError:
-                stripped = text_response.replace("```json", "").replace("```", "").strip()
-                try:
-                    data = json.loads(stripped)
-                except json.JSONDecodeError:
-                    s, e = stripped.find("["), stripped.rfind("]")
-                    if s >= 0 and e > s:
-                        data = json.loads(stripped[s:e+1])
-                    else:
-                        print(f"  {model_name}: No JSON found", flush=True)
-                        continue
-            
-            if not isinstance(data, list) or len(data) == 0:
-                continue
-            
-            # Validate: must have at least 80% of expected lines
-            non_empty_count = sum(1 for item in data if item.get("text", "").strip())
-            if non_empty_count < total_lines * 0.8:
-                print(f"  {model_name}: Only {non_empty_count}/{total_lines} lines (need 80%). Trying next model...", flush=True)
-                continue
-            
-            # Clamp all timestamps to audio duration
-            segments = []
-            for item in data:
-                text = item.get("text", "")
-                start = min(max(item.get("start", 0), 0), audio_duration)
-                end = min(max(item.get("end", start + 0.1), start + 0.1), audio_duration)
-                words = item.get("words", [])
-                
-                for w in words:
-                    w["start"] = round(max(start, min(w.get("start", start), end)), 2)
-                    w["end"] = round(max(w["start"] + 0.05, min(w.get("end", end), end)), 2)
-                    if w["end"] - w["start"] > 1.5:
-                        w["end"] = round(w["start"] + 1.5, 2)
-                
-                segments.append({"text": text, "start": round(start, 2), "end": round(end, 2), "words": words})
-            
-            segments = _transfer_punctuation(segments)
-            
-            non_empty = [s for s in segments if s["text"].strip()]
-            max_ts = max(s["end"] for s in segments) if segments else 0
-            print(f"  SUCCESS: {len(segments)} segments ({len(non_empty)} with lyrics)", flush=True)
-            print(f"  Max timestamp: {max_ts:.1f}s (audio: {audio_duration:.1f}s)", flush=True)
-            
-            for seg in segments[:3]:
-                if seg["text"]:
-                    print(f"    [{seg['start']:.1f}-{seg['end']:.1f}s] {seg['text'][:45]}")
-                    for w in seg.get("words", [])[:3]:
-                        print(f"      {w['start']:.2f}-{w['end']:.2f}: \"{w['word']}\"")
-            
-            return segments
-            
-        except json.JSONDecodeError as e:
-            print(f"  {model_name}: JSON parse error: {e}", flush=True)
+            chunk_bytes = Path(tmp_path).read_bytes()
+            chunk_b64 = base64.b64encode(chunk_bytes).decode("utf-8")
+            chunk_mime = "audio/wav"
         except Exception as e:
-            print(f"  {model_name}: Error: {e}", flush=True)
+            print(f"    Chunk {chunk_idx}: ffmpeg extract failed: {e}. Using full audio.", flush=True)
+            chunk_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+            chunk_mime = mime_type
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
+        
+        # VAD regions relative to this chunk
+        chunk_vad = []
+        for sp in speech_segments:
+            overlap_start = max(c_start, sp["start"])
+            overlap_end = min(c_end, sp["end"])
+            if overlap_end > overlap_start:
+                # Make timestamps relative to chunk start
+                chunk_vad.append({"start": round(overlap_start - c_start, 2), "end": round(overlap_end - c_start, 2)})
+        
+        chunk_vad_info = "\n".join([f"  Speech: {s['start']:.1f}s - {s['end']:.1f}s" for s in chunk_vad])
+        chunk_dur = round(c_end - c_start, 2)
+        
+        # Number lines for this chunk
+        chunk_numbered = "\n".join([f"L{j+1}: {line}" for j, line in enumerate(chunk_lines)])
+        
+        prompt = f"""I have an audio clip ({chunk_dur:.1f}s) and {n_chunk_lines} lines of lyrics. Your job:
+1. Listen carefully and add TIMESTAMPS for EVERY line (when it is sung)
+2. Add PUNCTUATION (, ! \u0964) to the words
+
+AUDIO CLIP DURATION: {chunk_dur:.1f} seconds
+
+SPEECH REGIONS in this clip:
+{chunk_vad_info}
+
+LYRICS \u2014 exactly {n_chunk_lines} lines. Output a segment for EVERY line:
+{chunk_numbered}
+
+OUTPUT FORMAT \u2014 JSON array with exactly {n_chunk_lines} segments:
+{{"text": "line with punctuation", "start": X.XX, "end": X.XX, "words": [{{"word": "word,", "start": X.XX, "end": X.XX}}]}}
+
+RULES:
+- Output ALL {n_chunk_lines} lines. Do NOT skip any.
+- Each segment 2-7 seconds. NO segment longer than 8 seconds.
+- ALL timestamps between 0 and {chunk_dur:.1f}
+- Word timestamps TIGHT \u2014 each word ~0.3-0.6s, no gaps between words
+- Add punctuation IN words
+- Return ONLY the JSON array"""
+        
+        from gemini_utils import call_gemini_api
+
+        # Call Gemini
+        models = ["gemini-3-flash-preview", "gemini-flash-latest"]
+        chunk_data = None
+        
+        for model_name in models:
+            print(f"    Chunk {chunk_idx} [{c_start:.0f}-{c_end:.0f}s]: Trying {model_name}...", flush=True)
+            
+            gen_config = {"temperature": 0.1, "maxOutputTokens": 16384}
+            if "1.5" in model_name:
+                # Flash 1.5 doesn't support thinkingConfig in the same way, removing it
+                pass
+            
+            payload = {
+                "contents": [{"parts": [
+                    {"inlineData": {"mimeType": chunk_mime, "data": chunk_b64}},
+                    {"text": prompt}
+                ]}],
+                "generationConfig": gen_config
+            }
+            
+            result = call_gemini_api(model_name, payload, api_key=api_key, pool="alignment")
+            
+            if result["status"] == "error":
+                print(f"    {model_name} failed: {result.get('error')}", flush=True)
+                continue
+                
+            try:
+                response_json = result["data"]
+                parts = response_json["candidates"][0]["content"]["parts"]
+                all_texts = [p["text"] for p in parts if "text" in p]
+                text_response = all_texts[-1] if all_texts else ""
+                
+                if not text_response:
+                    continue
+                
+                # Parse JSON
+                try:
+                    chunk_data = json.loads(text_response.strip())
+                except json.JSONDecodeError:
+                    stripped = text_response.replace("```json", "").replace("```", "").strip()
+                    try:
+                        chunk_data = json.loads(stripped)
+                    except json.JSONDecodeError:
+                        s, e = stripped.find("["), stripped.rfind("]")
+                        if s >= 0 and e > s:
+                            chunk_data = json.loads(stripped[s:e+1])
+                        else:
+                            continue
+                
+                if isinstance(chunk_data, list) and len(chunk_data) > 0:
+                    break
+                chunk_data = None
+                
+            except Exception as e:
+                print(f"    {model_name}: Error: {e}", flush=True)
+        
+        if not chunk_data:
+            print(f"    Chunk {chunk_idx}: All models failed. Using even distribution.", flush=True)
+            # Fallback: even distribution within chunk
+            if chunk_vad:
+                total_vad = sum(v["end"] - v["start"] for v in chunk_vad)
+                slot = total_vad / max(n_chunk_lines, 1)
+                vad_cursor = 0
+                vad_pos = chunk_vad[0]["start"] if chunk_vad else 0
+                
+                for j, line in enumerate(chunk_lines):
+                    while vad_cursor < len(chunk_vad) and vad_pos >= chunk_vad[vad_cursor]["end"]:
+                        vad_cursor += 1
+                        if vad_cursor < len(chunk_vad):
+                            vad_pos = chunk_vad[vad_cursor]["start"]
+                    
+                    seg_start = round(vad_pos + c_start, 2)  # absolute time
+                    seg_end = round(min(vad_pos + slot, chunk_dur) + c_start, 2)
+                    words = _even_words(line, seg_start, seg_end)
+                    all_segments.append({"text": line, "start": seg_start, "end": seg_end, "words": words})
+                    vad_pos += slot
+            continue
+        
+        # Convert chunk-relative timestamps to absolute timestamps
+        for item in chunk_data:
+            text = item.get("text", "")
+            # Add chunk offset to get absolute timestamps
+            start = round(min(max(item.get("start", 0), 0), chunk_dur) + c_start, 2)
+            end = round(min(max(item.get("end", start - c_start + 0.1), start - c_start + 0.1), chunk_dur) + c_start, 2)
+            words = item.get("words", [])
+            
+            for w in words:
+                w["start"] = round(max(start, min(w.get("start", 0) + c_start, end)), 2)
+                w["end"] = round(max(w["start"] + 0.05, min(w.get("end", 0) + c_start, end)), 2)
+                if w["end"] - w["start"] > 1.5:
+                    w["end"] = round(w["start"] + 1.5, 2)
+            
+            all_segments.append({"text": text, "start": start, "end": end, "words": words})
+        
+        matched = sum(1 for s in chunk_data if s.get("text", "").strip())
+        print(f"    Chunk {chunk_idx}: {matched}/{n_chunk_lines} lines aligned", flush=True)
     
-    print("  All models failed for full pipeline.", flush=True)
-    return None
+    if not all_segments:
+        print("  All chunks failed.", flush=True)
+        if _HAS_EVIDENCE:
+            try:
+                save_error_context(
+                    audio_path.stem, "gemini_align", "All Gemini alignment chunks failed",
+                    extra={"n_chunks": n_chunks, "total_lines": total_lines,
+                           "audio_duration": audio_duration,
+                           "models_tried": ["gemini-3-flash-preview", "gemini-flash-latest"]})
+            except Exception:
+                pass
+        return None
+    
+    # Sort by start time and post-process
+    all_segments.sort(key=lambda s: s["start"])
+    all_segments = _transfer_punctuation(all_segments)
+    all_segments = _validate_and_fix_segments(all_segments, speech_segments, audio_duration)
+    all_segments = _smooth_word_gaps(all_segments)
+    
+    non_empty = [s for s in all_segments if s["text"].strip()]
+    max_ts = max(s["end"] for s in all_segments) if all_segments else 0
+    print(f"  SUCCESS: {len(all_segments)} segments ({len(non_empty)} with lyrics)", flush=True)
+    print(f"  Max timestamp: {max_ts:.1f}s (audio: {audio_duration:.1f}s)", flush=True)
+    
+    for seg in all_segments[:3]:
+        if seg["text"]:
+            print(f"    [{seg['start']:.1f}-{seg['end']:.1f}s] {seg['text'][:45]}")
+            for w in seg.get("words", [])[:3]:
+                print(f"      {w['start']:.2f}-{w['end']:.2f}: \"{w['word']}\"")
+    
+    return all_segments
 
 
 def align_and_split_lyrics(audio_path, lyrics_segments, api_key=None):
@@ -455,33 +608,34 @@ Example:
 
 Return ONLY the JSON array:"""
 
-    models = ["gemini-2.5-flash", "gemini-2.0-flash"]
+    from gemini_utils import call_gemini_api
+
+    models = ["gemini-3-flash-preview", "gemini-flash-latest"]
     
     for model_name in models:
         print(f"  Attempting merged align+split with {model_name}...", flush=True)
         
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+        gen_config = {"temperature": 0.1, "maxOutputTokens": 65536}
+        if "2.5" in model_name: # Keep for future if needed, but current models don't use this
+            pass
         
         payload = {
             "contents": [{"parts": [
                 {"inlineData": {"mimeType": mime_type, "data": audio_b64}},
                 {"text": prompt}
             ]}],
-            "generationConfig": {
-                "temperature": 0.1,
-                "maxOutputTokens": 65536,
-            }
+            "generationConfig": gen_config
         }
         
+        result = call_gemini_api(model_name, payload, api_key=api_key)
+        
+        if result["status"] == "error":
+            print(f"  {model_name} failed: {result.get('error')}", flush=True)
+            continue
+            
         try:
-            response = requests.post(url, json=payload, timeout=300)
-            
-            if response.status_code != 200:
-                print(f"  {model_name} failed: HTTP {response.status_code}", flush=True)
-                continue
-            
-            result = response.json()
-            parts = result["candidates"][0]["content"]["parts"]
+            response_json = result["data"]
+            parts = response_json["candidates"][0]["content"]["parts"]
             all_texts = [p["text"] for p in parts if "text" in p]
             text_response = all_texts[-1] if all_texts else ""
             
@@ -561,6 +715,7 @@ Return ONLY the JSON array:"""
                     print(f"      {w['start']:.2f}-{w['end']:.2f}: \"{w['word']}\"")
             # Transfer punctuation from segment text to words
             expanded = _transfer_punctuation(expanded)
+            expanded = _smooth_word_gaps(expanded)
             
             return expanded
             
@@ -651,6 +806,148 @@ def _transfer_punctuation(segments):
     return segments
 
 
+def _smooth_word_gaps(segments):
+    """
+    Fill gaps between word timestamps for smooth karaoke highlighting.
+    
+    Problem: Gemini leaves gaps like:
+      "मैया" 57.50→57.80, "तेरी" 58.00→58.20 (0.2s gap = flicker)
+    
+    Fix: Extend each word's end to the next word's start:
+      "मैया" 57.50→58.00, "तेरी" 58.00→58.50 (smooth flow)
+    """
+    for seg in segments:
+        words = seg.get("words", [])
+        if len(words) < 2:
+            continue
+        
+        seg_end = seg.get("end", words[-1]["end"])
+        
+        for i in range(len(words) - 1):
+            next_start = words[i + 1]["start"]
+            gap = next_start - words[i]["end"]
+            # Fill gaps up to 0.5s (larger gaps are likely real pauses)
+            if 0 < gap <= 0.5:
+                words[i]["end"] = round(next_start, 2)
+        
+        # Extend last word to segment end (if within 1.5s)
+        if words:
+            last_gap = seg_end - words[-1]["end"]
+            if 0 < last_gap <= 1.5:
+                words[-1]["end"] = round(seg_end, 2)
+    
+    return segments
+
+
+def _validate_and_fix_segments(segments, speech_segments, audio_duration):
+    """
+    Detect and fix common Gemini alignment failures:
+    1. Segments too wide (e.g. 43s for one line) -> trim to word range
+    2. Segments crammed at end (0.05s wide) -> redistribute to unused VAD regions
+    """
+    import re
+    
+    if not segments or not speech_segments:
+        return segments
+    
+    # -- Fix 1: Trim overly wide segments --
+    for seg in segments:
+        words = seg.get("words", [])
+        seg_dur = seg["end"] - seg["start"]
+        
+        if seg_dur > 10 and words and len(words) >= 2:
+            first_word_start = words[0]["start"]
+            last_word_end = words[-1]["end"]
+            word_span = last_word_end - first_word_start
+            
+            if word_span < seg_dur * 0.5:
+                new_start = round(max(first_word_start - 0.3, 0), 2)
+                new_end = round(min(last_word_end + 0.5, audio_duration), 2)
+                print(f"  \u26a0\ufe0f  Trimmed wide segment: [{seg['start']:.1f}-{seg['end']:.1f}s] -> [{new_start:.1f}-{new_end:.1f}s] \"{seg['text'][:30]}\"", flush=True)
+                seg["start"] = new_start
+                seg["end"] = new_end
+    
+    # -- Fix 2: Detect crammed segments (near-zero duration) --
+    crammed = []
+    good = []
+    for i, seg in enumerate(segments):
+        if seg["end"] - seg["start"] < 0.5 and seg.get("text", "").strip():
+            crammed.append(i)
+        else:
+            good.append(i)
+    
+    if not crammed:
+        return segments
+    
+    print(f"  \u26a0\ufe0f  Found {len(crammed)} crammed segments \u2014 redistributing to unused speech regions", flush=True)
+    
+    # Find speech regions not covered by good segments
+    used_ranges = [(segments[i]["start"], segments[i]["end"]) for i in good if segments[i].get("text", "").strip()]
+    
+    unused_speech = []
+    for sp in speech_segments:
+        sp_start, sp_end = sp["start"], sp["end"]
+        covered = 0
+        for us, ue in used_ranges:
+            overlap_start = max(sp_start, us)
+            overlap_end = min(sp_end, ue)
+            if overlap_end > overlap_start:
+                covered += overlap_end - overlap_start
+        
+        sp_dur = sp_end - sp_start
+        if sp_dur - covered > 2.0:
+            latest_end = sp_start
+            for us, ue in used_ranges:
+                if us >= sp_start and ue <= sp_end and ue > latest_end:
+                    latest_end = ue
+            
+            if sp_end - latest_end > 2.0:
+                unused_speech.append({"start": latest_end, "end": sp_end})
+    
+    if not unused_speech:
+        half = audio_duration / 2
+        unused_speech = [{"start": half, "end": audio_duration}]
+    
+    # Distribute crammed segments across unused speech regions
+    total_unused = sum(u["end"] - u["start"] for u in unused_speech)
+    slot_dur = min(total_unused / max(len(crammed), 1), 5.0)
+    
+    cursor = 0
+    cursor_pos = unused_speech[0]["start"] if unused_speech else audio_duration / 2
+    
+    for idx in crammed:
+        seg = segments[idx]
+        
+        while cursor < len(unused_speech) and cursor_pos >= unused_speech[cursor]["end"]:
+            cursor += 1
+            if cursor < len(unused_speech):
+                cursor_pos = unused_speech[cursor]["start"]
+        
+        if cursor >= len(unused_speech):
+            break
+        
+        new_start = round(cursor_pos, 2)
+        new_end = round(min(cursor_pos + slot_dur, unused_speech[cursor]["end"]), 2)
+        
+        text_words = re.findall(r'\S+', seg["text"])
+        n = max(len(text_words), 1)
+        word_dur = (new_end - new_start) / n
+        new_words = [{"word": tw, "start": round(new_start + j * word_dur, 2),
+                      "end": round(new_start + (j + 1) * word_dur - 0.03, 2)}
+                     for j, tw in enumerate(text_words)]
+        
+        print(f"  -> Redistributed: \"{seg['text'][:35]}\" -> [{new_start:.1f}-{new_end:.1f}s]", flush=True)
+        seg["start"] = new_start
+        seg["end"] = new_end
+        seg["words"] = new_words
+        
+        cursor_pos = new_end + 0.3
+    
+    segments.sort(key=lambda s: s["start"])
+    
+    return segments
+
+
 def detect_chorus_repetitions(audio_path, lyrics_segments, api_key=None):
     """
     Use Gemini to detect how many times each line is actually repeated in the audio.
@@ -710,8 +1007,8 @@ Return a JSON array with one object per segment:
 
 Return ONLY the JSON array:"""
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
-    
+    from gemini_utils import call_gemini_api
+
     payload = {
         "contents": [{"parts": [
             {"inlineData": {"mimeType": mime_type, "data": audio_b64}},
@@ -725,17 +1022,17 @@ Return ONLY the JSON array:"""
     
     print("  Detecting chorus repetitions with Gemini...", flush=True)
     
+    result = call_gemini_api("gemini-3-flash-preview", payload, api_key=api_key)
+    
+    if result["status"] == "error":
+        print(f"  Failed: {result.get('error')}", flush=True)
+        return lyrics_segments
+        
     try:
-        response = requests.post(url, json=payload, timeout=180)
-        
-        if response.status_code != 200:
-            print(f"  Failed: HTTP {response.status_code}", flush=True)
-            return lyrics_segments
-        
-        result = response.json()
+        response_json = result["data"]
         
         # Collect ALL text from all parts
-        parts = result["candidates"][0]["content"]["parts"]
+        parts = response_json["candidates"][0]["content"]["parts"]
         all_texts = [p["text"] for p in parts if "text" in p]
         # Use the last text part (thinking block is usually first)
         text_response = all_texts[-1] if all_texts else ""
@@ -762,7 +1059,6 @@ Return ONLY the JSON array:"""
                         rep_data = json.loads(stripped[idx_start:idx_end+1])
                     except json.JSONDecodeError as e:
                         print(f"  JSON parse failed: {e}", flush=True)
-                        print(f"  Text preview: {stripped[:200]}", flush=True)
                         return lyrics_segments
                 else:
                     print(f"  No JSON array found in response", flush=True)

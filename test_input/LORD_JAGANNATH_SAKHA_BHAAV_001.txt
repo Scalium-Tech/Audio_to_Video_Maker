@@ -1,0 +1,162 @@
+Metadata for: Final_Bhajans_(Latest)-LORD_JAGANNATH_SAKHA_BHAAV_001-76aa3a41-48dc-47a6-bb1e-08db90464c93.mp3
+Generated: 2026-02-27T10:35:38.345Z
+
+--- Track Information ---
+Title: LORD_JAGANNATH_SAKHA_BHAAV_001
+Artist: jitendrajainnew
+Year: 2026
+
+--- Musical Information ---
+
+--- Creation Details ---
+Prompt: Dhun style bhajan with catchy repeating hook, harmonium lead, medium-fast tempo, steady tabla and dholak, manjira and claps, joyful devotional mood, simple structure, high repeatability, clean energetic ending. No English Words.
+
+--- Lyrics ---
+[Intro]
+(Energetic harmonium lead, rhythmic dholak and tabla patterns, bright manjira claps, joyful and inviting devotional atmosphere)
+
+[Verse 1]
+बड़ी बड़ी आँखें गोल मटोल
+मुख से मीठी वाणी बोल
+दुनिया का वो स्वामी है
+पर मेरा सखा अंतर्यामी है
+
+[Pre-Chorus]
+हाथ पकड़ कर चलता है
+वो ही साथ रहता है
+कैसा अनूठा नाता है
+जो सबको सुख देता है
+
+[Chorus]
+जगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं
+जगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं
+जगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं
+जगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं
+
+[Verse 2]
+नीलांचल का राजा वो
+सब भक्तों का प्यारा वो
+छप्पन भोग लगाता है
+पर प्रेम का भूखा रहता है
+
+[Pre-Chorus]
+हाथ पकड़ कर चलता है
+वो ही साथ रहता है
+कैसा अनूठा नाता है
+जो सबको सुख देता है
+
+[Chorus]
+जगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं
+जगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं
+जगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं
+जगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं
+
+[Bridge]
+जय जगन्नाथ, जय जगन्नाथ
+मेरा यार, जगन्नाथ
+मेरा मीत, जगन्नाथ
+मेरा सखा, जगन्नाथ
+
+[Verse 3]
+रथ पर बैठ कर आता है
+सबके दुख मिटाता है
+सब झुकते हैं चरणों में
+मैं हाथ मिलाता हूँ पलकों में
+
+[Chorus]
+जगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं
+जगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं
+जगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं
+जगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं
+
+[Outro]
+(Tempo increasing slightly with rapid claps and dholak beats, final loud chant of "Jai Jagannath", energetic harmonium finish)
+
+Cover Art URL: https://cdn2.suno.ai/image_76aa3a41-48dc-47a6-bb1e-08db90464c93.jpeg
+
+--- Raw API Response ---
+{
+  "status": "complete",
+  "title": "LORD_JAGANNATH_SAKHA_BHAAV_001",
+  "play_count": 0,
+  "upvote_count": 0,
+  "allow_comments": true,
+  "id": "76aa3a41-48dc-47a6-bb1e-08db90464c93",
+  "entity_type": "song_schema",
+  "video_url": "",
+  "audio_url": "https://cdn1.suno.ai/76aa3a41-48dc-47a6-bb1e-08db90464c93.mp3",
+  "image_url": "https://cdn2.suno.ai/image_76aa3a41-48dc-47a6-bb1e-08db90464c93.jpeg",
+  "image_large_url": "https://cdn2.suno.ai/image_large_76aa3a41-48dc-47a6-bb1e-08db90464c93.jpeg",
+  "major_model_version": "v5",
+  "model_name": "chirp-crow",
+  "metadata": {
+    "tags": "Dhun style bhajan with catchy repeating hook, harmonium lead, medium-fast tempo, steady tabla and dholak, manjira and claps, joyful devotional mood, simple structure, high repeatability, clean energetic ending. No English Words.",
+    "prompt": "[Intro]\n(Energetic harmonium lead, rhythmic dholak and tabla patterns, bright manjira claps, joyful and inviting devotional atmosphere)\n\n[Verse 1]\nबड़ी बड़ी आँखें गोल मटोल\nमुख से मीठी वाणी बोल\nदुनिया का वो स्वामी है\nपर मेरा सखा अंतर्यामी है\n\n[Pre-Chorus]\nहाथ पकड़ कर चलता है\nवो ही साथ रहता है\nकैसा अनूठा नाता है\nजो सबको सुख देता है\n\n[Chorus]\nजगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं\nजगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं\nजगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं\nजगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं\n\n[Verse 2]\nनीलांचल का राजा वो\nसब भक्तों का प्यारा वो\nछप्पन भोग लगाता है\nपर प्रेम का भूखा रहता है\n\n[Pre-Chorus]\nहाथ पकड़ कर चलता है\nवो ही साथ रहता है\nकैसा अनूठा नाता है\nजो सबको सुख देता है\n\n[Chorus]\nजगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं\nजगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं\nजगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं\nजगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं\n\n[Bridge]\nजय जगन्नाथ, जय जगन्नाथ\nमेरा यार, जगन्नाथ\nमेरा मीत, जगन्नाथ\nमेरा सखा, जगन्नाथ\n\n[Verse 3]\nरथ पर बैठ कर आता है\nसबके दुख मिटाता है\nसब झुकते हैं चरणों में\nमैं हाथ मिलाता हूँ पलकों में\n\n[Chorus]\nजगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं\nजगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं\nजगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं\nजगन्नाथ मेरे यार हैं, जगन्नाथ मेरे यार हैं\n\n[Outro]\n(Tempo increasing slightly with rapid claps and dholak beats, final loud chant of \"Jai Jagannath\", energetic harmonium finish)",
+    "type": "gen",
+    "duration": 162.92,
+    "refund_credits": false,
+    "stream": true,
+    "make_instrumental": false,
+    "can_remix": true,
+    "is_remix": false,
+    "priority": 10,
+    "has_stem": false,
+    "uses_latest_model": true,
+    "model_badges": {
+      "songcard": {
+        "display_name": "v5",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "0000004D",
+          "border_color": "00000000"
+        }
+      },
+      "songrow": {
+        "display_name": "v5",
+        "light": {
+          "text_color": "FD429C",
+          "background_color": "FD429C1A",
+          "border_color": "00000000"
+        },
+        "dark": {
+          "text_color": "FD429C",
+          "background_color": "FD429C40",
+          "border_color": "00000000"
+        }
+      }
+    }
+  },
+  "is_liked": false,
+  "user_id": "fa84ed6d-a5cb-4f13-89e5-9c619afa50af",
+  "display_name": "jitendrajainnew",
+  "handle": "jitendrajainnew",
+  "is_handle_updated": true,
+  "avatar_image_url": "https://cdn1.suno.ai/sAura10.jpg",
+  "is_trashed": false,
+  "is_hidden": false,
+  "created_at": "2026-02-24T21:43:23.023Z",
+  "is_public": false,
+  "is_following_creator": false,
+  "project": {
+    "id": "11ee8efc-30e3-4e37-9f89-148f61b22bf6",
+    "name": "Final Bhajans (Latest)",
+    "description": "",
+    "is_trashed": false,
+    "is_public": false
+  },
+  "ownership": {
+    "ownership_reason": "subscribed"
+  },
+  "explicit": false,
+  "comment_count": 0,
+  "flag_count": 0,
+  "display_tags": "bhajan, devotional music",
+  "is_contest_clip": false,
+  "has_hook": false,
+  "batch_index": 0
+}

@@ -44,6 +44,9 @@
 # With parallel workers + render throttle:
 ./start --workers 20 --max-render-workers 6
 
+# With auto-retry (default 3 retries, configurable):
+./start --workers 20 --max-retries 5
+
 # Single song:
 python3.11 nemo_align.py input_songs/song.mp3 ground_truth_lyrics/song.mp3.txt
 ```
@@ -65,20 +68,29 @@ python3.11 nemo_align.py input_songs/song.mp3 ground_truth_lyrics/song.mp3.txt
 
 ## 🚧 Current Work In Progress
 
-### Active Task: Batch Log Analysis & Scaling Plan — ✅ COMPLETE
-- **Status**: Completed log analysis of the massive 518-song batch. All songs successfully finished.
+### Active Task: Re-processing Full Batch — ✅ READY
+- **Status**: Storage optimized (Direct Drive upload + Auto-cleanup).
 - **What's done**:
-  - Analyzed `pipeline.log` for error patterns (5,158 Gemini rate limits, 1,029 image retries).
-  - Verified that all 7 initially failed songs were successfully retried and are in `done/`.
-  - Created a detailed `batch_processing_report.md` artifact.
-  - Documented scaling strategies for 2,000+ files (API key rotation, NeMo timeouts).
-- **Previous**: Gemini Chunked Alignment (60-Second Fix).
-- **What's left**: None.
+  1. **Patched Bugs**: Fixed output nesting, environment loading, and upload paths.
+  2. **Storage Optimization**: Removed local Desktop copy; outputs now upload directly to Drive.
+  3. **Auto-Cleanup**: Song folders are deleted from `output_song/` immediately after successful upload.
+  4. **New Feature**: Added original `.txt` lyrics copy to the output folder.
+- **What's next**: Run `./start --workers 15` to process all 1,500 songs.
 - **Blockers**: None.
 
 ### Recent Changes Log
 | Date | What Changed | Files Modified |
 |---|---|---|
+| 2026-03-13 | Reverted to flat folder structure (removed date-based subfolders) and added original .txt copy to output | `batch_processor.py` |
+| 2026-03-13 | Optimized storage: removed local Desktop copy and added auto-cleanup after Drive upload | `upload_queue.py`, `batch_processor.py` |
+| 2026-03-13 | Fixed double folder nesting and environment variable loading order for uploads | `batch_processor.py` |
+| 2026-03-13 | V4.5: date folders, config hot-reload, batch scheduling, smart resume, multi-machine queue, health check endpoint | `main.py`, `batch_processor.py`, `start`, `machine_queue.py` [NEW], `health_server.py` [NEW] |
+| 2026-03-13 | V4.4: preview mode, background reuse checkpoint, post-render validation | `main.py`, `ffmpeg_render.py`, `batch_processor.py`, `start` |
+| 2026-03-13 | V4.3: queue priority, gemini cache, dashboard, pipeline mode, ffmpeg progress, memory check, HTML report, audio normalization, dedup, process pool | `batch_processor.py`, `gemini_utils.py`, `ffmpeg_render.py`, `start`, `gemini_cache.py` [NEW], `report_generator.py` [NEW], `dashboard.py` [NEW] |
+| 2026-03-13 | V4.2: config.yaml, ffprobe validation, stale lock cleanup, per-song retry, token tracking, dry-run, rate-limit observability | `config.yaml` [NEW], `batch_processor.py`, `gemini_utils.py`, `start` |
+| 2026-03-13 | V4.1: per-endpoint key pools, parallel uploads, lyrics_extractor bug fix | `gemini_utils.py`, `upload_queue.py`, `batch_processor.py`, `lyrics_extractor.py`, `gemini_align.py`, `generate_background.py`, `.env.example` |
+| 2026-03-13 | V4 pipeline improvements: multi-key round robin, NeMo auto-restart, checkpointing, retry loop | `gemini_utils.py`, `nemo_server.py`, `batch_processor.py`, `start`, `.env.example` |
+| 2026-03-13 | Pushed project to GitHub V4 repository with updated .gitignore | `.gitignore`, `PROJECT_CONTEXT.md` |
 | 2026-03-12 | Analyzed 518-song batch logs, generated performance report and scaling strategy | `PROJECT_CONTEXT.md` |
 | 2026-03-02 | Gemini chunked alignment: 60s chunks, VAD distribution, math import fix, smooth word gaps, validate/fix segments | `gemini_align.py` |
 | 2026-02-27 | Performance optimizations for 20 workers | `ffmpeg_render.py`, `nemo_server.py` [NEW], `nemo_align.py`, `batch_processor.py`, `main.py`, `start` |
@@ -99,6 +111,10 @@ python3.11 nemo_align.py input_songs/song.mp3 ground_truth_lyrics/song.mp3.txt
 - Internal render: 960×540, upscaled to 1920×1080 via FFmpeg Lanczos filter
 - Encoder: `h264_videotoolbox` (hardware) with `libx264` fallback
 - Shared NeMo server: single process loads model, workers request log-probs via queues
+- NeMo server: 300s timeouts, health-check pings, auto-restart up to 3 times
+- Gemini API: Per-endpoint key pools with per-key 60s cooldown on 429 errors
+- Parallel rclone uploads via background thread (non-blocking delivery)
+- Retry loop: `start` script re-runs batch processor if failures remain (max 3 retries)
 - Estimated: ~4.5 min per song (30s alignment + 3.5min rendering)
 
 ---

@@ -25,6 +25,16 @@ import subprocess
 import numpy as np
 from pathlib import Path
 
+_PIPELINE_ROOT = str(Path(__file__).parent.parent)
+if _PIPELINE_ROOT not in sys.path:
+    sys.path.insert(0, _PIPELINE_ROOT)
+
+try:
+    from failure_evidence import save_error_log, save_error_context
+    _HAS_EVIDENCE = True
+except ImportError:
+    _HAS_EVIDENCE = False
+
 
 def _convert_to_wav(audio_path, output_wav=None):
     """Convert any audio to 16kHz mono WAV for NeMo."""
@@ -41,6 +51,16 @@ def _convert_to_wav(audio_path, output_wav=None):
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
+        song_name = audio_path.stem
+        if _HAS_EVIDENCE:
+            try:
+                save_error_log(song_name, "nemo_align/wav_convert",
+                               f"ffmpeg conversion failed (exit {result.returncode})",
+                               extra_lines=[f"command: {' '.join(cmd)}", f"stderr: {result.stderr[:500]}"])
+                save_error_context(song_name, "nemo_align/wav_convert", "ffmpeg conversion failed",
+                                   command=cmd, extra={"stderr": result.stderr[:1000], "exit_code": result.returncode})
+            except Exception:
+                pass
         raise RuntimeError(f"ffmpeg conversion failed: {result.stderr[:200]}")
     
     return str(output_wav)
@@ -51,6 +71,43 @@ def _strip_punctuation(text):
     text = re.sub(r'[,!।|.?;:\-()\'\"]+', '', text)
     text = re.sub(r'\s+', ' ', text).strip()
     return text
+
+
+def _split_segments_on_punctuation(segments):
+    """
+    Split aligned lyric segments into shorter visual lines whenever a word ends
+    with sentence punctuation. This gives the renderer natural line breaks.
+    """
+    split_segments = []
+    break_chars = {".", "!", "?", "।", "॥"}
+
+    for seg in segments:
+        seg_words = seg.get("words", [])
+        if not seg_words:
+            split_segments.append(seg)
+            continue
+
+        current_words = []
+        for word in seg_words:
+            current_words.append(word)
+            if word.get("word", "")[-1:] in break_chars:
+                split_segments.append({
+                    "text": " ".join(w["word"] for w in current_words).strip(),
+                    "start": current_words[0]["start"],
+                    "end": current_words[-1]["end"],
+                    "words": current_words[:],
+                })
+                current_words = []
+
+        if current_words:
+            split_segments.append({
+                "text": " ".join(w["word"] for w in current_words).strip(),
+                "start": current_words[0]["start"],
+                "end": current_words[-1]["end"],
+                "words": current_words[:],
+            })
+
+    return split_segments
 
 
 def _ctc_forced_align(log_probs, targets, blank_id=0):
@@ -272,6 +329,12 @@ def align_with_nemo(audio_path, lyrics_text, output_path=None, nemo_client=None)
         
         if not full_tokens:
             print("  ERROR: No valid tokens found for alignment.", flush=True)
+            if _HAS_EVIDENCE:
+                try:
+                    save_error_context(audio_path.stem, "nemo_align", "No valid tokens for alignment",
+                                       extra={"vocab_size": len(vocab), "clean_text_len": len(full_clean_text)})
+                except Exception:
+                    pass
             return None
         
         print(f"  Aligning {len(full_tokens)} tokens to {T} frames...", flush=True)
@@ -281,6 +344,12 @@ def align_with_nemo(audio_path, lyrics_text, output_path=None, nemo_client=None)
         
         if not alignments:
             print("  ERROR: Forced alignment returned no results.", flush=True)
+            if _HAS_EVIDENCE:
+                try:
+                    save_error_context(audio_path.stem, "nemo_align", "CTC forced alignment returned no results",
+                                       extra={"n_tokens": len(full_tokens), "n_frames": T})
+                except Exception:
+                    pass
             return None
         
         print(f"  Alignment done: {len(alignments)} token alignments", flush=True)
@@ -323,6 +392,8 @@ def align_with_nemo(audio_path, lyrics_text, output_path=None, nemo_client=None)
         # Step 8: Map words back to original lines
         segments = _map_words_to_lines(all_words, original_lines, clean_lines)
         
+        segments = _split_segments_on_punctuation(segments)
+
         # Clean double punctuation
         for seg in segments:
             seg["text"] = seg["text"].replace("!,", "!").replace(",!", "!").replace(",।", "।")
@@ -396,6 +467,12 @@ def _align_with_nemo_client(audio_path, lyrics_text, output_path, nemo_client):
         
         if not full_tokens:
             print("  ERROR: No valid tokens found.", flush=True)
+            if _HAS_EVIDENCE:
+                try:
+                    save_error_context(audio_path.stem, "nemo_align/client", "No valid tokens for alignment",
+                                       extra={"vocab_size": len(vocab), "clean_text_len": len(full_clean_text)})
+                except Exception:
+                    pass
             return None
         
         print(f"  Aligning {len(full_tokens)} tokens to {T} frames...", flush=True)
@@ -403,6 +480,12 @@ def _align_with_nemo_client(audio_path, lyrics_text, output_path, nemo_client):
         
         if not alignments:
             print("  ERROR: Forced alignment returned no results.", flush=True)
+            if _HAS_EVIDENCE:
+                try:
+                    save_error_context(audio_path.stem, "nemo_align/client", "CTC forced alignment returned no results",
+                                       extra={"n_tokens": len(full_tokens), "n_frames": T})
+                except Exception:
+                    pass
             return None
         
         print(f"  Alignment done: {len(alignments)} token alignments", flush=True)
@@ -441,6 +524,8 @@ def _align_with_nemo_client(audio_path, lyrics_text, output_path, nemo_client):
         
         segments = _map_words_to_lines(all_words, original_lines, clean_lines)
         
+        segments = _split_segments_on_punctuation(segments)
+
         # Clean double punctuation
         for seg in segments:
             seg["text"] = seg["text"].replace("!,", "!").replace(",!", "!").replace(",\u0964", "\u0964")

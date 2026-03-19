@@ -1,0 +1,44 @@
+# ============================================================
+# LyricFlow Pipeline Configuration
+# ============================================================
+# Edit values here instead of hunting through source code.
+# All values have sensible defaults — only change what you need.
+# ============================================================
+
+pipeline:
+  workers: 3                    # Total parallel job slots (override with --workers)
+  max_render_workers: 6         # Max concurrent FFmpeg encodes
+  est_minutes_per_song: 4.5     # For ETA calculation
+
+gemini:
+  concurrency_limit: 3          # Max simultaneous Gemini API requests
+  key_cooldown_seconds: 60      # Per-key cooldown after 429 error
+  request_timeout: 180          # HTTP request timeout (seconds)
+  max_retries: 5                # Max retry attempts per API call
+
+nemo:
+  startup_timeout: 300          # Time to wait for model to load
+  request_timeout: 300          # Per-inference request timeout
+  health_check_timeout: 15      # Health-check ping timeout
+  max_restarts: 3               # Auto-restart attempts before giving up
+
+render:
+  internal_width: 960
+  internal_height: 540
+  output_width: 1920
+  output_height: 1080
+
+retry:
+  per_song_max_attempts: 3      # In-place retries per song within a batch
+  per_song_backoff_seconds: 30  # Wait between in-place retries
+  stale_lock_hours: 2           # Lock files older than this are cleaned up
+  batch_max_retries: 3          # ./start script retry loops (override with --max-retries)
+  batch_retry_wait: 30          # Seconds between batch retries
+
+upload:
+  rclone_timeout: 300           # Per-song upload timeout
+  rclone_retries: 3             # rclone --retries flag
+  rclone_transfers: 1           # rclone --transfers flag
+
+disk:
+  min_free_gb: 5.0              # Emergency cleanup trigger threshold
